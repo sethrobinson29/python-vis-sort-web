@@ -25,7 +25,7 @@ jobs:
         run: pip install pygame-ce pygbag
 
       - name: Build with Pygbag
-        run: python -m pygbag --build main.py
+        run: python -m pygbag --build --template template.tmpl main.py
 
       - uses: actions/upload-pages-artifact@v3
         with:

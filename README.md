@@ -23,7 +23,7 @@ pip install pygame-ce pygbag
 python main.py
 
 # Browser (WASM) — open http://localhost:8000
-python -m pygbag main.py
+python -m pygbag --template template.tmpl main.py
 ```
 
 ## Credits
