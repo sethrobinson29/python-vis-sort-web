@@ -132,6 +132,12 @@ def draw_ui(screen, sorter, sort_surf, buttons, slider, font, comp_font):
     comp_txt = comp_font.render(f"Comparisons: {sorter.comps}", True, PURPLE)
     screen.blit(comp_txt, (40, panel_y + 14))
 
+    # mute indicator
+    mute_color = PURPLE if sorter.sound_enabled else RED
+    mute_txt = comp_font.render(
+        "[M] Sound: ON" if sorter.sound_enabled else "[M] Sound: OFF", True, mute_color)
+    screen.blit(mute_txt, (40, panel_y + 36))
+
     # buttons
     for btn in buttons:
         btn.draw(screen)
@@ -143,6 +149,14 @@ def draw_ui(screen, sorter, sort_surf, buttons, slider, font, comp_font):
 # ── main ──────────────────────────────────────────────────────────────────────
 async def main():
     pygame.init()
+
+    _mixer_ok = False
+    try:
+        pygame.mixer.init(frequency=44100, size=-16, channels=1, buffer=512)
+        _mixer_ok = True
+    except Exception:
+        pass
+
     screen = pygame.display.set_mode((WIN_W, WIN_H))
     pygame.display.set_caption("vis-sort")
 
@@ -154,6 +168,7 @@ async def main():
     comp_font  = pygame.font.Font(None, 24)
 
     sorter = Sorter(sort_surf, SORT_W, SORT_H)
+    sorter._mixer_ok = _mixer_ok
 
     # ── buttons ───────────────────────────────────────────────────────────────
     panel_y   = SORT_Y + SORT_H + 12
@@ -194,6 +209,10 @@ async def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_m:
+                    sorter.sound_enabled = not sorter.sound_enabled
 
             # slider
             was_dragging = slider.dragging
