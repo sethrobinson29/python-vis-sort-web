@@ -371,6 +371,13 @@ frameborder="1"
         console.warn("TODO: panda3d canvas monitor", self, ecw, ech)
     }
 
+    // Suppress the browser's "Leave site?" dialog on close/reload/navigate.
+    // Uses capture phase so it runs before any handler Pygbag registers.
+    window.addEventListener('beforeunload', function(e) {
+        e.stopImmediatePropagation();
+        return undefined;
+    }, { capture: true });
+
     async function custom_onload(debug_hidden) {
         // this is called before anything python is loaded
         // make your js customization here

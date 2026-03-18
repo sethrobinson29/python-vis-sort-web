@@ -286,7 +286,7 @@ async def main():
     buttons = [
         Button((40,  btn_y, 120, btn_h), "New Array", "new",  btn_font),
         Button((514, btn_y,  70, btn_h), "Sort >",    "sort", btn_font),
-        Button((WIN_W - 110, btn_y, 80, btn_h), "Quit", "quit", btn_font, danger=True),
+        Button((WIN_W - 110, btn_y, 80, btn_h), "Stop", "stop", btn_font, danger=True),
     ]
 
     # ── descending checkbox ───────────────────────────────────────────────────
@@ -357,8 +357,8 @@ async def main():
                 for btn in buttons:
                     if btn.is_clicked(event.pos):
                         action = btn.action
-                        if action == "quit":
-                            return
+                        if action == "stop":
+                            await cancel_task(task_ref)
                         elif action == "new":
                             await cancel_task(task_ref)
                             sorter.makeNewVals(size_slider.value)
