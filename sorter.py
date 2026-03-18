@@ -91,6 +91,20 @@ class Sorter:
                                  (hx, self.height), (hx, self.height - self.vals[idx]), 1)
         self._play_highlight_tone()
 
+    async def final_pass(self):
+        """Sweep through the sorted array playing notes in sort direction."""
+        ascending = self.vals[0] <= self.vals[-1]
+        indices = range(self.numBars) if ascending else range(self.numBars - 1, -1, -1)
+        draw_every = max(1, self.numBars // 100)
+        for step, i in enumerate(indices):
+            self.highlighted = [i]
+            if step % draw_every == 0:
+                self.drawNums()
+                await asyncio.sleep(0)
+        self.highlighted = []
+        self.drawNums()
+        await asyncio.sleep(0)
+
     async def reverse(self):
         i, j = 0, self.numBars - 1
         draw_every = max(1, self.numBars // 100)
@@ -119,9 +133,7 @@ class Sorter:
                     self.highlighted = [j, j + 1]
                     self.drawNums()
                     await asyncio.sleep(0)
-        self.highlighted = []
-        self.drawNums()
-        await asyncio.sleep(0)
+        await self.final_pass()
 
     async def selectionSort(self):
         self.comps = 0
@@ -135,9 +147,7 @@ class Sorter:
                     self.highlighted = [i, j]
                     self.drawNums()
                     await asyncio.sleep(0)
-        self.highlighted = []
-        self.drawNums()
-        await asyncio.sleep(0)
+        await self.final_pass()
 
     def merge(self, begin, mid, end):
         x, y = begin, mid + 1
@@ -170,9 +180,7 @@ class Sorter:
     async def mergeSortWrap(self):
         self.comps = 0
         await self.mergeSort(0, self.numBars - 1)
-        self.highlighted = []
-        self.drawNums()
-        await asyncio.sleep(0)
+        await self.final_pass()
 
     async def partition(self, left, right):
         pivot = self.vals[right]
@@ -200,9 +208,7 @@ class Sorter:
     async def quickSortWrap(self):
         self.comps = 0
         await self.quicksort(0, self.numBars - 1)
-        self.highlighted = []
-        self.drawNums()
-        await asyncio.sleep(0)
+        await self.final_pass()
 
     def countingSort(self, exp1):
         n = self.numBars
@@ -232,6 +238,4 @@ class Sorter:
             self.drawNums()
             await asyncio.sleep(0)
             exp *= 10
-        self.highlighted = []
-        self.drawNums()
-        await asyncio.sleep(0)
+        await self.final_pass()
