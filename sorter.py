@@ -39,6 +39,7 @@ class Sorter:
         self.comps = 0
         self.highlighted = []
         self.sound_enabled = True
+        self.volume = 0.5
         self._tone_cache = {}
         self._mixer_ok = False
 
@@ -62,7 +63,9 @@ class Sorter:
             return
         value = self.vals[self.highlighted[0]]
         if value > 0:
-            self._get_tone(value).play()
+            tone = self._get_tone(value)
+            tone.set_volume(self.volume)
+            tone.play()
 
     def drawNums(self):
         self.surface.fill((0, 0, 52))

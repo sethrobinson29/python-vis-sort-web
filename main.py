@@ -43,13 +43,14 @@ class Button:
 
 # ── Slider ────────────────────────────────────────────────────────────────────
 class Slider:
-    def __init__(self, track_rect, font, min_val=100, max_val=500, step=5, initial=100):
+    def __init__(self, track_rect, font, min_val=100, max_val=500, step=5, initial=100, label="Value"):
         self.track  = pygame.Rect(track_rect)
         self.font   = font
         self.min    = min_val
         self.max    = max_val
         self.step   = step
         self.value  = initial
+        self.label  = label
         self.dragging = False
 
     @property
@@ -69,8 +70,8 @@ class Slider:
         # thumb
         pygame.draw.rect(surf, PURPLE, self.thumb_rect(), border_radius=3)
         # label
-        lbl = self.font.render(f"Array size: {self.value}", True, PURPLE)
-        surf.blit(lbl, (self.track.x, self.track.y - 22))
+        lbl = self.font.render(f"{self.label}: {self.value}", True, PURPLE)
+        surf.blit(lbl, (self.track.x, self.track.y - 18))
 
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -95,6 +96,62 @@ class Slider:
         self.value = max(self.min, min(self.max, self.value))
 
 
+# ── Dropdown ──────────────────────────────────────────────────────────────────
+class Dropdown:
+    def __init__(self, rect, options, font):
+        self.rect    = pygame.Rect(rect)
+        self.options = options  # list of (label, action)
+        self.font    = font
+        self.selected = 0
+        self.open    = False
+
+    @property
+    def selected_action(self):
+        return self.options[self.selected][1]
+
+    def _item_rect(self, i):
+        n = len(self.options)
+        return pygame.Rect(
+            self.rect.x,
+            self.rect.y - (n - i) * self.rect.height,
+            self.rect.width,
+            self.rect.height,
+        )
+
+    def draw(self, surf):
+        pygame.draw.rect(surf, PURPLE, self.rect, border_radius=4)
+        pygame.draw.rect(surf, HEADER, self.rect, width=2, border_radius=4)
+        label = self.options[self.selected][0]
+        txt = self.font.render(label + " [v]", True, PANEL)
+        surf.blit(txt, txt.get_rect(center=self.rect.center))
+
+        if self.open:
+            for i, (lbl, _) in enumerate(self.options):
+                ir = self._item_rect(i)
+                bg = HEADER if i == self.selected else PANEL
+                pygame.draw.rect(surf, bg, ir, border_radius=3)
+                pygame.draw.rect(surf, PURPLE, ir, width=1, border_radius=3)
+                t = self.font.render(lbl, True, PURPLE)
+                surf.blit(t, t.get_rect(center=ir.center))
+
+    def handle_event(self, event):
+        """Returns True if the event was consumed."""
+        if event.type != pygame.MOUSEBUTTONDOWN or event.button != 1:
+            return False
+        if self.rect.collidepoint(event.pos):
+            self.open = not self.open
+            return True
+        if self.open:
+            for i in range(len(self.options)):
+                if self._item_rect(i).collidepoint(event.pos):
+                    self.selected = i
+                    self.open = False
+                    return True
+            self.open = False
+            return True
+        return False
+
+
 # ── helpers ───────────────────────────────────────────────────────────────────
 async def cancel_task(task_ref):
     """Cancel any running sort task."""
@@ -107,7 +164,20 @@ async def cancel_task(task_ref):
     task_ref[0] = None
 
 
-def draw_ui(screen, sorter, sort_surf, buttons, slider, font, comp_font):
+async def run_sort(sorter, action, task_ref):
+    await cancel_task(task_ref)
+    dispatch = {
+        "bubble":    sorter.bubbleSort,
+        "selection": sorter.selectionSort,
+        "merge":     sorter.mergeSortWrap,
+        "quick":     sorter.quickSortWrap,
+        "radix":     sorter.radixSort,
+    }
+    if action in dispatch:
+        task_ref[0] = asyncio.create_task(dispatch[action]())
+
+
+def draw_ui(screen, sorter, sort_surf, buttons, dropdown, size_slider, vol_slider, font, comp_font):
     screen.fill(BG)
 
     # header
@@ -128,22 +198,25 @@ def draw_ui(screen, sorter, sort_surf, buttons, slider, font, comp_font):
     pygame.draw.rect(screen, PANEL, panel_rect, border_radius=6)
     pygame.draw.rect(screen, HEADER, panel_rect, width=3, border_radius=6)
 
-    # comparisons
+    # comparisons + sound status (right of sort button)
     comp_txt = comp_font.render(f"Comparisons: {sorter.comps}", True, PURPLE)
-    screen.blit(comp_txt, (40, panel_y + 14))
+    screen.blit(comp_txt, (530, panel_y + 14))
 
-    # mute indicator
     mute_color = PURPLE if sorter.sound_enabled else RED
     mute_txt = comp_font.render(
         "[M] Sound: ON" if sorter.sound_enabled else "[M] Sound: OFF", True, mute_color)
-    screen.blit(mute_txt, (40, panel_y + 36))
+    screen.blit(mute_txt, (530, panel_y + 32))
 
-    # buttons
+    # regular buttons
     for btn in buttons:
         btn.draw(screen)
 
-    # slider
-    slider.draw(screen)
+    # sliders
+    size_slider.draw(screen)
+    vol_slider.draw(screen)
+
+    # dropdown drawn last so it renders on top of everything
+    dropdown.draw(screen)
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
@@ -170,42 +243,52 @@ async def main():
     sorter = Sorter(sort_surf, SORT_W, SORT_H)
     sorter._mixer_ok = _mixer_ok
 
+    # ── layout ────────────────────────────────────────────────────────────────
+    panel_y  = SORT_Y + SORT_H + 12   # = 642
+    btn_y    = panel_y + 8             # = 650
+    btn_h    = 30
+
     # ── buttons ───────────────────────────────────────────────────────────────
-    panel_y   = SORT_Y + SORT_H + 12
-    btn_top   = panel_y + 44
-    btn_h     = 34
-    btn_gap   = 8
-    btn_x     = 240
-    sort_btns = ["Bubble", "Selection", "Merge", "Quick", "Radix"]
-    buttons   = []
-    for idx, name in enumerate(sort_btns):
-        w   = 96
-        x   = btn_x + idx * (w + btn_gap)
-        btn = Button((x, btn_top, w, btn_h), name, name.lower(), btn_font)
-        buttons.append(btn)
+    buttons = [
+        Button((40,  btn_y, 120, btn_h), "New Array", "new",     btn_font),
+        Button((168, btn_y, 100, btn_h), "Reverse",   "reverse", btn_font),
+        Button((444, btn_y,  80, btn_h), "Sort >",     "sort",  btn_font),
+        Button((WIN_W - 110, btn_y, 80, btn_h), "Quit", "quit",  btn_font, danger=True),
+    ]
 
-    util_y = btn_top + btn_h + 8
-    buttons.append(Button((btn_x,                btn_top - 36, 150, 30), "New Array",   "new",     btn_font))
-    buttons.append(Button((btn_x + 158,          btn_top - 36, 110, 30), "Reverse",     "reverse", btn_font))
-    quit_btn = Button((WIN_W - 110, panel_y + 10, 80, 30), "Quit", "quit", btn_font, danger=True)
-    buttons.append(quit_btn)
+    # ── dropdown ──────────────────────────────────────────────────────────────
+    sort_options = [
+        ("Bubble",    "bubble"),
+        ("Selection", "selection"),
+        ("Merge",     "merge"),
+        ("Quick",     "quick"),
+        ("Radix",     "radix"),
+    ]
+    dropdown = Dropdown((276, btn_y, 160, btn_h), sort_options, btn_font)
 
-    slider = Slider(
-        track_rect=(WIN_W - 340, panel_y + 50, 280, 16),
+    # ── sliders ───────────────────────────────────────────────────────────────
+    track_y = panel_y + 66
+
+    size_slider = Slider(
+        track_rect=(40, track_y, 280, 16),
         font=comp_font,
         min_val=SLIDER_MIN, max_val=SLIDER_MAX, step=SLIDER_STEP,
-        initial=100,
+        initial=100, label="Array size",
     )
+    vol_slider = Slider(
+        track_rect=(340, track_y, 200, 16),
+        font=comp_font,
+        min_val=0, max_val=100, step=5,
+        initial=50, label="Volume",
+    )
+    sorter.volume = vol_slider.value / 100
 
-    sorter.makeNewVals(slider.value)
+    sorter.makeNewVals(size_slider.value)
     task_ref = [None]
-    slider_released = False  # track when to regenerate on slider release
 
     clock = pygame.time.Clock()
 
     while True:
-        slider_changed = False
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return
@@ -214,13 +297,20 @@ async def main():
                 if event.key == pygame.K_m:
                     sorter.sound_enabled = not sorter.sound_enabled
 
-            # slider
-            was_dragging = slider.dragging
-            changed = slider.handle_event(event)
-            if was_dragging and event.type == pygame.MOUSEBUTTONUP:
-                # slider released — regenerate
+            # sliders
+            size_was_dragging = size_slider.dragging
+            size_slider.handle_event(event)
+            if size_was_dragging and event.type == pygame.MOUSEBUTTONUP:
                 await cancel_task(task_ref)
-                sorter.makeNewVals(slider.value)
+                sorter.makeNewVals(size_slider.value)
+
+            vol_changed = vol_slider.handle_event(event)
+            if vol_changed:
+                sorter.volume = vol_slider.value / 100
+
+            # dropdown (consume event before buttons if open)
+            if dropdown.handle_event(event):
+                continue
 
             # button clicks
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
@@ -231,28 +321,16 @@ async def main():
                             return
                         elif action == "new":
                             await cancel_task(task_ref)
-                            sorter.makeNewVals(slider.value)
+                            sorter.makeNewVals(size_slider.value)
                         elif action == "reverse":
                             await cancel_task(task_ref)
                             task_ref[0] = asyncio.create_task(sorter.reverse())
-                        elif action == "bubble":
-                            await cancel_task(task_ref)
-                            task_ref[0] = asyncio.create_task(sorter.bubbleSort())
-                        elif action == "selection":
-                            await cancel_task(task_ref)
-                            task_ref[0] = asyncio.create_task(sorter.selectionSort())
-                        elif action == "merge":
-                            await cancel_task(task_ref)
-                            task_ref[0] = asyncio.create_task(sorter.mergeSortWrap())
-                        elif action == "quick":
-                            await cancel_task(task_ref)
-                            task_ref[0] = asyncio.create_task(sorter.quickSortWrap())
-                        elif action == "radix":
-                            await cancel_task(task_ref)
-                            task_ref[0] = asyncio.create_task(sorter.radixSort())
+                        elif action == "sort":
+                            await run_sort(sorter, dropdown.selected_action, task_ref)
                         break
 
-        draw_ui(screen, sorter, sort_surf, buttons, slider, title_font, comp_font)
+        draw_ui(screen, sorter, sort_surf, buttons, dropdown, size_slider, vol_slider,
+                title_font, comp_font)
         pygame.display.flip()
         await asyncio.sleep(0)
 
