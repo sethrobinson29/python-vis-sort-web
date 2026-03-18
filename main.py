@@ -96,6 +96,39 @@ class Slider:
         self.value = max(self.min, min(self.max, self.value))
 
 
+# ── Checkbox ─────────────────────────────────────────────────────────────────
+class Checkbox:
+    def __init__(self, x, y, label, font, checked=False):
+        self.box     = pygame.Rect(x, y, 20, 20)
+        self.label   = label
+        self.font    = font
+        self.checked = checked
+
+    def _hit_rect(self):
+        lw = self.font.size(self.label)[0]
+        return pygame.Rect(self.box.x, self.box.y, self.box.width + 8 + lw, self.box.height)
+
+    def draw(self, surf):
+        pygame.draw.rect(surf, HEADER, self.box, border_radius=3)
+        pygame.draw.rect(surf, PURPLE, self.box, width=2, border_radius=3)
+        if self.checked:
+            pygame.draw.line(surf, PURPLE,
+                (self.box.x + 3, self.box.centery),
+                (self.box.centerx - 1, self.box.bottom - 4), 2)
+            pygame.draw.line(surf, PURPLE,
+                (self.box.centerx - 1, self.box.bottom - 4),
+                (self.box.right - 3, self.box.y + 3), 2)
+        txt = self.font.render(self.label, True, PURPLE)
+        surf.blit(txt, (self.box.right + 8, self.box.centery - txt.get_height() // 2))
+
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self._hit_rect().collidepoint(event.pos):
+                self.checked = not self.checked
+                return True
+        return False
+
+
 # ── Dropdown ──────────────────────────────────────────────────────────────────
 class Dropdown:
     def __init__(self, rect, options, font):
@@ -177,7 +210,7 @@ async def run_sort(sorter, action, task_ref):
         task_ref[0] = asyncio.create_task(dispatch[action]())
 
 
-def draw_ui(screen, sorter, sort_surf, buttons, dropdown, size_slider, vol_slider, font, comp_font):
+def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown, size_slider, vol_slider, font, comp_font):
     screen.fill(BG)
 
     # header
@@ -198,18 +231,19 @@ def draw_ui(screen, sorter, sort_surf, buttons, dropdown, size_slider, vol_slide
     pygame.draw.rect(screen, PANEL, panel_rect, border_radius=6)
     pygame.draw.rect(screen, HEADER, panel_rect, width=3, border_radius=6)
 
-    # comparisons + sound status (right of sort button)
+    # comparisons + sound status
     comp_txt = comp_font.render(f"Comparisons: {sorter.comps}", True, PURPLE)
-    screen.blit(comp_txt, (530, panel_y + 14))
+    screen.blit(comp_txt, (620, panel_y + 14))
 
     mute_color = PURPLE if sorter.sound_enabled else RED
     mute_txt = comp_font.render(
         "[M] Sound: ON" if sorter.sound_enabled else "[M] Sound: OFF", True, mute_color)
-    screen.blit(mute_txt, (530, panel_y + 32))
+    screen.blit(mute_txt, (620, panel_y + 32))
 
-    # regular buttons
+    # regular buttons + checkbox
     for btn in buttons:
         btn.draw(screen)
+    desc_cb.draw(screen)
 
     # sliders
     size_slider.draw(screen)
@@ -250,11 +284,13 @@ async def main():
 
     # ── buttons ───────────────────────────────────────────────────────────────
     buttons = [
-        Button((40,  btn_y, 120, btn_h), "New Array", "new",     btn_font),
-        Button((168, btn_y, 100, btn_h), "Reverse",   "reverse", btn_font),
-        Button((444, btn_y,  80, btn_h), "Sort >",     "sort",  btn_font),
-        Button((WIN_W - 110, btn_y, 80, btn_h), "Quit", "quit",  btn_font, danger=True),
+        Button((40,  btn_y, 120, btn_h), "New Array", "new",  btn_font),
+        Button((514, btn_y,  70, btn_h), "Sort >",    "sort", btn_font),
+        Button((WIN_W - 110, btn_y, 80, btn_h), "Quit", "quit", btn_font, danger=True),
     ]
+
+    # ── descending checkbox ───────────────────────────────────────────────────
+    desc_cb = Checkbox(168, btn_y + (btn_h - 20) // 2, "Descending", btn_font)
 
     # ── dropdown ──────────────────────────────────────────────────────────────
     sort_options = [
@@ -264,7 +300,7 @@ async def main():
         ("Quick",     "quick"),
         ("Radix",     "radix"),
     ]
-    dropdown = Dropdown((276, btn_y, 160, btn_h), sort_options, btn_font)
+    dropdown = Dropdown((346, btn_y, 160, btn_h), sort_options, btn_font)
 
     # ── sliders ───────────────────────────────────────────────────────────────
     track_y = panel_y + 66
@@ -308,6 +344,10 @@ async def main():
             if vol_changed:
                 sorter.volume = vol_slider.value / 100
 
+            # checkbox
+            if desc_cb.handle_event(event):
+                sorter.descending = desc_cb.checked
+
             # dropdown (consume event before buttons if open)
             if dropdown.handle_event(event):
                 continue
@@ -322,14 +362,11 @@ async def main():
                         elif action == "new":
                             await cancel_task(task_ref)
                             sorter.makeNewVals(size_slider.value)
-                        elif action == "reverse":
-                            await cancel_task(task_ref)
-                            task_ref[0] = asyncio.create_task(sorter.reverse())
                         elif action == "sort":
                             await run_sort(sorter, dropdown.selected_action, task_ref)
                         break
 
-        draw_ui(screen, sorter, sort_surf, buttons, dropdown, size_slider, vol_slider,
+        draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown, size_slider, vol_slider,
                 title_font, comp_font)
         pygame.display.flip()
         await asyncio.sleep(0)

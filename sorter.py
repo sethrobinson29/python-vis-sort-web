@@ -40,6 +40,7 @@ class Sorter:
         self.highlighted = []
         self.sound_enabled = True
         self.volume = 0.5
+        self.descending = False
         self._tone_cache = {}
         self._mixer_ok = False
 
@@ -92,11 +93,9 @@ class Sorter:
         self._play_highlight_tone()
 
     async def final_pass(self):
-        """Sweep through the sorted array playing notes in sort direction."""
-        ascending = self.vals[0] <= self.vals[-1]
-        indices = range(self.numBars) if ascending else range(self.numBars - 1, -1, -1)
+        """Sweep left-to-right through the sorted array, playing notes for each bar."""
         draw_every = max(1, self.numBars // 100)
-        for step, i in enumerate(indices):
+        for step, i in enumerate(range(self.numBars)):
             self.highlighted = [i]
             if step % draw_every == 0:
                 self.drawNums()
@@ -127,7 +126,7 @@ class Sorter:
         for i in range(self.numBars - 1):
             for j in range(self.numBars - i - 1):
                 self.comps += 1
-                if self.vals[j] > self.vals[j + 1]:
+                if (self.vals[j] > self.vals[j + 1]) if not self.descending else (self.vals[j] < self.vals[j + 1]):
                     swapVals(self.vals, j, j + 1)
                 if self.comps % draw_every == 0:
                     self.highlighted = [j, j + 1]
@@ -141,7 +140,7 @@ class Sorter:
         for i in range(self.numBars - 1):
             for j in range(i + 1, self.numBars):
                 self.comps += 1
-                if self.vals[i] > self.vals[j]:
+                if (self.vals[i] > self.vals[j]) if not self.descending else (self.vals[i] < self.vals[j]):
                     swapVals(self.vals, i, j)
                 if self.comps % draw_every == 0:
                     self.highlighted = [i, j]
@@ -157,7 +156,7 @@ class Sorter:
                 tmp.append(self.vals[y]); y += 1
             elif y > end:
                 tmp.append(self.vals[x]); x += 1
-            elif self.vals[x] < self.vals[y]:
+            elif (self.vals[x] < self.vals[y]) if not self.descending else (self.vals[x] > self.vals[y]):
                 self.comps += 1
                 tmp.append(self.vals[x]); x += 1
             else:
@@ -187,7 +186,7 @@ class Sorter:
         i = left - 1
         for j in range(left, right):
             self.comps += 1
-            if self.vals[j] <= pivot:
+            if (self.vals[j] <= pivot) if not self.descending else (self.vals[j] >= pivot):
                 i += 1
                 swapVals(self.vals, i, j)
                 self.highlighted = [j, right]
@@ -238,4 +237,6 @@ class Sorter:
             self.drawNums()
             await asyncio.sleep(0)
             exp *= 10
+        if self.descending:
+            self.vals.reverse()
         await self.final_pass()
