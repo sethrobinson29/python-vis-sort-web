@@ -139,14 +139,21 @@ class Button:
         self.font   = font
         self.danger = danger
 
-    def draw(self, surf):
-        color = (210, 160, 160) if self.danger else WIN_GRAY
-        draw_raised(surf, self.rect, color)
-        txt = self.font.render(self.label, False, WIN_RED if self.danger else WIN_TEXT)
-        surf.blit(txt, txt.get_rect(center=self.rect.center))
+    def draw(self, surf, disabled=False):
+        if disabled:
+            draw_raised(surf, self.rect, WIN_GRAY)
+            r = self.font.render(self.label, False, WIN_LIGHT)
+            pos = r.get_rect(center=self.rect.center)
+            surf.blit(r, pos.move(1, 1))
+            surf.blit(self.font.render(self.label, False, WIN_DARK), pos)
+        else:
+            color = (210, 160, 160) if self.danger else WIN_GRAY
+            draw_raised(surf, self.rect, color)
+            txt = self.font.render(self.label, False, WIN_RED if self.danger else WIN_TEXT)
+            surf.blit(txt, txt.get_rect(center=self.rect.center))
 
-    def is_clicked(self, pos):
-        return self.rect.collidepoint(pos)
+    def is_clicked(self, pos, disabled=False):
+        return not disabled and self.rect.collidepoint(pos)
 
 
 # ── Slider ────────────────────────────────────────────────────────────────────
@@ -171,17 +178,23 @@ class Slider:
         ty = self.track.centery
         return pygame.Rect(tx - 8, ty - 10, 16, 20)
 
-    def draw(self, surf):
+    def draw(self, surf, disabled=False):
         draw_sunken(surf, self.track, WIN_WHITE)
-        fill_w = self._thumb_x - self.track.x
-        if fill_w > 2:
-            surf.fill(WIN_NAVY, pygame.Rect(self.track.x + 2, self.track.y + 2,
-                                            fill_w - 2, self.track.height - 4))
-        draw_raised(surf, self.thumb_rect())
-        lbl = self.font.render(f"{self.label}: {self.value}", False, WIN_TEXT)
+        if not disabled:
+            fill_w = self._thumb_x - self.track.x
+            if fill_w > 2:
+                surf.fill(WIN_NAVY, pygame.Rect(self.track.x + 2, self.track.y + 2,
+                                                fill_w - 2, self.track.height - 4))
+        draw_raised(surf, self.thumb_rect(), WIN_DARK if disabled else WIN_GRAY)
+        lbl_text = f"{self.label}: {self.value}"
+        lbl_color = WIN_DARK if disabled else WIN_TEXT
+        lbl = self.font.render(lbl_text, False, lbl_color)
         surf.blit(lbl, (self.track.x, self.track.y - 18))
 
-    def handle_event(self, event):
+    def handle_event(self, event, disabled=False):
+        if disabled:
+            self.dragging = False
+            return False
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.thumb_rect().collidepoint(event.pos) or self.track.collidepoint(event.pos):
                 self.dragging = True
@@ -216,19 +229,22 @@ class Checkbox:
         lw = self.font.size(self.label)[0]
         return pygame.Rect(self.box.x, self.box.y, self.box.width + 6 + lw, self.box.height)
 
-    def draw(self, surf):
+    def draw(self, surf, disabled=False):
         draw_sunken(surf, self.box, WIN_WHITE)
+        tick_color = WIN_DARK if disabled else WIN_TEXT
         if self.checked:
-            pygame.draw.line(surf, WIN_TEXT,
+            pygame.draw.line(surf, tick_color,
                 (self.box.x + 2, self.box.centery),
                 (self.box.centerx - 1, self.box.bottom - 3), 2)
-            pygame.draw.line(surf, WIN_TEXT,
+            pygame.draw.line(surf, tick_color,
                 (self.box.centerx - 1, self.box.bottom - 3),
                 (self.box.right - 2, self.box.y + 2), 2)
-        txt = self.font.render(self.label, False, WIN_TEXT)
+        txt = self.font.render(self.label, False, WIN_DARK if disabled else WIN_TEXT)
         surf.blit(txt, (self.box.right + 6, self.box.centery - txt.get_height() // 2))
 
-    def handle_event(self, event):
+    def handle_event(self, event, disabled=False):
+        if disabled:
+            return False
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self._hit_rect().collidepoint(event.pos):
                 self.checked = not self.checked
@@ -258,19 +274,20 @@ class Dropdown:
             self.rect.height,
         )
 
-    def draw(self, surf):
+    def draw(self, surf, disabled=False):
         arrow_w    = 18
         text_rect  = pygame.Rect(self.rect.x, self.rect.y, self.rect.width - arrow_w, self.rect.height)
         arrow_rect = pygame.Rect(self.rect.right - arrow_w, self.rect.y, arrow_w, self.rect.height)
+        text_color = WIN_DARK if disabled else WIN_TEXT
         draw_sunken(surf, text_rect, WIN_WHITE)
         draw_raised(surf, arrow_rect)
-        av = self.font.render("v", False, WIN_TEXT)
+        av = self.font.render("v", False, text_color)
         surf.blit(av, av.get_rect(center=arrow_rect.center))
         label = self.options[self.selected][0]
-        txt = self.font.render(label, False, WIN_TEXT)
+        txt = self.font.render(label, False, text_color)
         surf.blit(txt, txt.get_rect(midleft=(text_rect.x + 4, text_rect.centery)))
 
-        if self.open:
+        if self.open and not disabled:
             list_rect = pygame.Rect(
                 self.rect.x,
                 self.rect.bottom,
@@ -288,7 +305,10 @@ class Dropdown:
                     t = self.font.render(lbl, False, WIN_TEXT)
                 surf.blit(t, t.get_rect(midleft=(ir.x + 6, ir.centery)))
 
-    def handle_event(self, event):
+    def handle_event(self, event, disabled=False):
+        if disabled:
+            self.open = False
+            return False
         if event.type != pygame.MOUSEBUTTONDOWN or event.button != 1:
             return False
         if self.rect.collidepoint(event.pos):
@@ -330,7 +350,7 @@ async def run_sort(sorter, action, task_ref):
 
 
 def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
-            size_slider, vol_slider, font, comp_font, title_grad, bg_surf):
+            size_slider, vol_slider, font, comp_font, title_grad, bg_surf, sorting=False):
     screen.blit(bg_surf, (0, 0))
 
     # outer window frame — floats on teal desktop, fills interior gray
@@ -354,7 +374,7 @@ def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
     draw_sunken(screen, panel_rect)
 
     # "Algorithm:" label
-    alg_lbl = comp_font.render("Algorithm:", False, WIN_TEXT)
+    alg_lbl = comp_font.render("Algorithm:", False, WIN_DARK if sorting else WIN_TEXT)
     screen.blit(alg_lbl, (COL_B, PANEL_Y + ALG_LABEL_ROW))
 
     # sound label
@@ -368,16 +388,16 @@ def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
     screen.blit(comp_txt, (COL_D, PANEL_Y + ROW1 + 2))
 
     for btn in buttons:
-        btn.draw(screen)
-    desc_cb.draw(screen)
-    size_slider.draw(screen)
-    vol_slider.draw(screen)
+        btn.draw(screen, disabled=((btn.action == "stop") != sorting))
+    desc_cb.draw(screen, disabled=sorting)
+    size_slider.draw(screen, disabled=sorting)
+    vol_slider.draw(screen, disabled=sorting)
 
     # sort canvas drawn before dropdown so open list renders on top of it
     border = pygame.Rect(SORT_X - 4, SORT_Y - 4, SORT_W + 8, SORT_H + 8)
     draw_sunken(screen, border)
     screen.blit(sort_surf, (SORT_X, SORT_Y))
-    dropdown.draw(screen)
+    dropdown.draw(screen, disabled=sorting)
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
@@ -454,6 +474,8 @@ async def main():
     clock = pygame.time.Clock()
 
     while True:
+        sorting = task_ref[0] is not None and not task_ref[0].done()
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 return
@@ -463,24 +485,24 @@ async def main():
                     sorter.sound_enabled = not sorter.sound_enabled
 
             size_was_dragging = size_slider.dragging
-            size_slider.handle_event(event)
-            if size_was_dragging and event.type == pygame.MOUSEBUTTONUP:
+            size_slider.handle_event(event, disabled=sorting)
+            if size_was_dragging and not sorting and event.type == pygame.MOUSEBUTTONUP:
                 await cancel_task(task_ref)
                 sorter.makeNewVals(size_slider.value)
 
-            vol_changed = vol_slider.handle_event(event)
+            vol_changed = vol_slider.handle_event(event, disabled=sorting)
             if vol_changed:
                 sorter.volume = vol_slider.value / 100
 
-            if desc_cb.handle_event(event):
+            if desc_cb.handle_event(event, disabled=sorting):
                 sorter.descending = desc_cb.checked
 
-            if dropdown.handle_event(event):
+            if dropdown.handle_event(event, disabled=sorting):
                 continue
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 for btn in buttons:
-                    if btn.is_clicked(event.pos):
+                    if btn.is_clicked(event.pos, disabled=((btn.action == "stop") != sorting)):
                         action = btn.action
                         if action == "stop":
                             await cancel_task(task_ref)
@@ -491,8 +513,22 @@ async def main():
                             await run_sort(sorter, dropdown.selected_action, task_ref)
                         break
 
+        # cursor: show "no" when hovering over a disabled widget
+        mp = pygame.mouse.get_pos()
+        disabled_rects = [b.rect for b in buttons if (b.action == "stop") != sorting]
+        if sorting:
+            disabled_rects += [
+                desc_cb._hit_rect(), dropdown.rect,
+                size_slider.track, size_slider.thumb_rect(),
+                vol_slider.track,  vol_slider.thumb_rect(),
+            ]
+        if any(r.collidepoint(mp) for r in disabled_rects):
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_NO)
+        else:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
+
         draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown, size_slider, vol_slider,
-                title_font, comp_font, title_grad, bg_surf)
+                title_font, comp_font, title_grad, bg_surf, sorting=sorting)
         pygame.display.flip()
         await asyncio.sleep(0)
 
