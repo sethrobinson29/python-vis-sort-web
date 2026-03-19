@@ -391,7 +391,7 @@ def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
         btn.draw(screen, disabled=((btn.action == "stop") != sorting))
     desc_cb.draw(screen, disabled=sorting)
     size_slider.draw(screen, disabled=sorting)
-    vol_slider.draw(screen, disabled=sorting)
+    vol_slider.draw(screen)
 
     # sort canvas drawn before dropdown so open list renders on top of it
     border = pygame.Rect(SORT_X - 4, SORT_Y - 4, SORT_W + 8, SORT_H + 8)
@@ -484,21 +484,26 @@ async def main():
                 if event.key == pygame.K_m:
                     sorter.sound_enabled = not sorter.sound_enabled
 
+            # dropdown first — its continue prevents sliders/buttons seeing the same click
+            prev_alg = dropdown.selected
+            if dropdown.handle_event(event, disabled=sorting):
+                if not dropdown.open and dropdown.selected != prev_alg:
+                    await cancel_task(task_ref)
+                    sorter.makeNewVals(size_slider.value)
+                continue
+
             size_was_dragging = size_slider.dragging
             size_slider.handle_event(event, disabled=sorting)
             if size_was_dragging and not sorting and event.type == pygame.MOUSEBUTTONUP:
                 await cancel_task(task_ref)
                 sorter.makeNewVals(size_slider.value)
 
-            vol_changed = vol_slider.handle_event(event, disabled=sorting)
+            vol_changed = vol_slider.handle_event(event)
             if vol_changed:
                 sorter.volume = vol_slider.value / 100
 
             if desc_cb.handle_event(event, disabled=sorting):
                 sorter.descending = desc_cb.checked
-
-            if dropdown.handle_event(event, disabled=sorting):
-                continue
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 for btn in buttons:
@@ -520,7 +525,6 @@ async def main():
             disabled_rects += [
                 desc_cb._hit_rect(), dropdown.rect,
                 size_slider.track, size_slider.thumb_rect(),
-                vol_slider.track,  vol_slider.thumb_rect(),
             ]
         if any(r.collidepoint(mp) for r in disabled_rects):
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_NO)

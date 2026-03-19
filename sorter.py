@@ -124,14 +124,18 @@ class Sorter:
         self.comps = 0
         draw_every = max(1, self.numBars // 100)
         for i in range(self.numBars - 1):
+            swapped = False
             for j in range(self.numBars - i - 1):
                 self.comps += 1
                 if (self.vals[j] > self.vals[j + 1]) if not self.descending else (self.vals[j] < self.vals[j + 1]):
                     swapVals(self.vals, j, j + 1)
+                    swapped = True
                 if self.comps % draw_every == 0:
                     self.highlighted = [j, j + 1]
                     self.drawNums()
                     await asyncio.sleep(0)
+            if not swapped:
+                break
         await self.final_pass()
 
     async def selectionSort(self):
