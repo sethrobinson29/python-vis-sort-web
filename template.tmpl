@@ -23,7 +23,7 @@ from pathlib import Path
 # do not rename
 async def custom_site():
     import embed
-    platform.document.body.style.background = "#C0C0C0"
+    platform.document.body.style.background = "#006070"
 
     platform.window.transfer.hidden = true
     platform.window.canvas.style.visibility = "visible"
@@ -183,6 +183,9 @@ function show_infobox() {
             --navy2:   #1084D0;
             --text:    #000000;
             --white:   #FFFFFF;
+            /* desktop pattern colours */
+            --dt-base: #006070;
+            --dt-line: rgba(0, 0, 0, 0.28);
         }
 
         * { box-sizing: border-box; }
@@ -192,7 +195,19 @@ function show_infobox() {
             font-size: 11px;
             margin: 0;
             padding: 0;
-            background-color: var(--bg);
+            /* Win95/98 teal diamond-crosshatch desktop */
+            background-color: var(--dt-base);
+            background-image:
+                repeating-linear-gradient(
+                    45deg,
+                    transparent 0px, transparent 14px,
+                    var(--dt-line) 14px, var(--dt-line) 16px
+                ),
+                repeating-linear-gradient(
+                    -45deg,
+                    transparent 0px, transparent 14px,
+                    var(--dt-line) 14px, var(--dt-line) 16px
+                );
             color: var(--text);
         }
 

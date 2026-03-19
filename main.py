@@ -21,33 +21,41 @@ WHITE = WIN_WHITE
 RED   = WIN_RED
 
 # ── layout constants ──────────────────────────────────────────────────────────
-WIN_W, WIN_H      = 1100, 750
-SORT_W, SORT_H    = 1015, 500
-SORT_X, SORT_Y    = 42, 80
+WIN_W, WIN_H   = 1100, 750
+SORT_W, SORT_H = 1015, 500
+SORT_X, SORT_Y = 42, 80
 
 SLIDER_MIN, SLIDER_MAX, SLIDER_STEP = 100, 500, 5
 
 # ── bottom panel layout ───────────────────────────────────────────────────────
-# panel_y = SORT_Y + SORT_H + 12 = 592  →  panel height = 750 - 592 - 10 = 148px
+# panel_y = SORT_Y + SORT_H + 12 = 592  →  panel height = 148 px
 #
 # Columns (absolute x):
-#   col_a = 34    buttons: Start / Stop / New Array
-#   col_b = 148   Descending cb / Dropdown / Array size slider
-#   col_c = 418   Sound label / Volume slider
-#   col_d = 622   Comparisons
+#   COL_A = 34    buttons: Start / Stop / New Array
+#   COL_B = 176   Descending cb / Algorithm label+Dropdown / Array size slider
+#   COL_C = 490   Sound label / Volume slider
+#   COL_D = 740   Comparisons
 #
 # Rows (offset from panel_y):
-#   +14   Start, Descending cb, Sound label, Comparisons
-#   +48   Stop, Dropdown
-#   +82   New Array, slider labels
-#   +100  slider tracks
+#   ROW1 = 12     Start, Descending cb, Sound label, Comparisons
+#   ALG  = 44     "Algorithm:" label
+#   ROW2 = 58     Stop, Dropdown
+#   ROW3 = 100    New Array, slider labels
+#   TRK  = 118    slider tracks
 
-COL_A, COL_B, COL_C, COL_D = 34, 148, 418, 622
-BTN_W, BTN_H = 100, 28
-ROW1, ROW2, ROW3, TRACK_ROW = 14, 48, 82, 100
-ARRAY_SLIDER_W = 250
-VOL_SLIDER_W   = 180
-DROPDOWN_W     = 170
+COL_A,  BTN_W  = 34,  110
+COL_B           = 176
+COL_C           = 490
+COL_D           = 740
+BTN_H           = 28
+DROPDOWN_W      = 180
+ARRAY_SLIDER_W  = 290
+VOL_SLIDER_W    = 210
+ROW1            = 12
+ALG_LABEL_ROW   = 44
+ROW2            = 58
+ROW3            = 100
+TRACK_ROW       = 118
 
 
 # ── font helper ───────────────────────────────────────────────────────────────
@@ -57,6 +65,44 @@ def _font(px_size, bold=False):
         return pygame.font.SysFont("microsoftsansserif,mssansserif,arial", px_size, bold=bold)
     except Exception:
         return pygame.font.Font(None, px_size + 10)
+
+
+# ── background tile ───────────────────────────────────────────────────────────
+def _make_bg_tile():
+    """16×16 diamond crosshatch in Win95 teal/blue tones.
+
+    Grid lines:  dark teal     (0,  48, 56)
+    Fill:        medium teal   (0,  96, 112)
+    Accent dots: blue-slate    (32, 80, 128)  at the centre of each diamond
+    """
+    C_LINE   = (0,  48, 56)
+    C_FILL   = (0,  96, 112)
+    C_ACCENT = (32, 80, 128)
+    S = 16
+    tile = pygame.Surface((S, S))
+    for y in range(S):
+        for x in range(S):
+            on_d1 = (x + y) % S < 2          # NE-SW diagonal band
+            on_d2 = (x - y) % S < 2          # NW-SE diagonal band  (Python % always ≥ 0)
+            at_ctr = ((x + y) % S == 8) and ((x - y) % S == 8)   # diamond centres
+            if on_d1 or on_d2:
+                c = C_LINE
+            elif at_ctr:
+                c = C_ACCENT
+            else:
+                c = C_FILL
+            tile.set_at((x, y), c)
+    return tile
+
+
+def _make_bg_surf(tile):
+    """Tile the bg pattern across the full window surface (rendered once)."""
+    surf = pygame.Surface((WIN_W, WIN_H))
+    tw, th = tile.get_size()
+    for ty in range(0, WIN_H, th):
+        for tx in range(0, WIN_W, tw):
+            surf.blit(tile, (tx, ty))
+    return surf
 
 
 # ── Win95 3D drawing helpers ──────────────────────────────────────────────────
@@ -124,7 +170,7 @@ class Slider:
         return pygame.Rect(tx - 8, ty - 10, 16, 20)
 
     def draw(self, surf):
-        draw_sunken(surf, self.track, WIN_WHITE)       # white track background
+        draw_sunken(surf, self.track, WIN_WHITE)
         draw_raised(surf, self.thumb_rect())
         lbl = self.font.render(f"{self.label}: {self.value}", False, WIN_TEXT)
         surf.blit(lbl, (self.track.x, self.track.y - 18))
@@ -208,7 +254,7 @@ class Dropdown:
 
     def draw(self, surf):
         # Win95 ComboBox: sunken white text field + raised arrow button
-        arrow_w  = 18
+        arrow_w    = 18
         text_rect  = pygame.Rect(self.rect.x, self.rect.y, self.rect.width - arrow_w, self.rect.height)
         arrow_rect = pygame.Rect(self.rect.right - arrow_w, self.rect.y, arrow_w, self.rect.height)
         draw_sunken(surf, text_rect, WIN_WHITE)
@@ -279,8 +325,9 @@ async def run_sort(sorter, action, task_ref):
 
 
 def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
-            size_slider, vol_slider, font, comp_font, title_grad):
-    screen.fill(WIN_GRAY)
+            size_slider, vol_slider, font, comp_font, title_grad, bg_surf):
+    # teal diamond-grid desktop background
+    screen.blit(bg_surf, (0, 0))
 
     # title bar
     screen.blit(title_grad, (0, 0))
@@ -302,17 +349,20 @@ def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
     panel_rect = pygame.Rect(20, panel_y, WIN_W - 40, WIN_H - panel_y - 10)
     draw_raised(screen, panel_rect)
 
-    # col D — comparisons (top-right of panel)
-    comp_txt = comp_font.render(f"Comparisons: {sorter.comps}", False, WIN_TEXT)
-    screen.blit(comp_txt, (COL_D, panel_y + ROW1 + 2))
+    # "Algorithm:" label above dropdown (col B)
+    alg_lbl = comp_font.render("Algorithm:", False, WIN_TEXT)
+    screen.blit(alg_lbl, (COL_B, panel_y + ALG_LABEL_ROW))
 
-    # col C — sound label + mute state
+    # col C — sound label
     mute_color = WIN_NAVY if sorter.sound_enabled else WIN_RED
     sound_txt = comp_font.render(
         "[M] Sound: ON" if sorter.sound_enabled else "[M] Sound: OFF", False, mute_color)
     screen.blit(sound_txt, (COL_C, panel_y + ROW1 + 2))
 
-    # buttons, checkbox, slider, dropdown
+    # col D — comparisons
+    comp_txt = comp_font.render(f"Comparisons: {sorter.comps}", False, WIN_TEXT)
+    screen.blit(comp_txt, (COL_D, panel_y + ROW1 + 2))
+
     for btn in buttons:
         btn.draw(screen)
     desc_cb.draw(screen)
@@ -337,14 +387,16 @@ async def main():
 
     sort_surf = pygame.Surface((SORT_W, SORT_H))
 
-    title_font = _font(13, bold=True)
+    # fonts — larger title for Win95 authenticity
+    title_font = _font(15, bold=True)
     btn_font   = _font(11)
     comp_font  = _font(11)
 
     sorter = Sorter(sort_surf, SORT_W, SORT_H)
     sorter._mixer_ok = _mixer_ok
 
-    # pre-render title-bar gradient
+    # pre-render background and title bar gradient (done once)
+    bg_surf    = _make_bg_surf(_make_bg_tile())
     title_grad = pygame.Surface((WIN_W, 68))
     for i in range(WIN_W):
         t = i / (WIN_W - 1)
@@ -356,17 +408,17 @@ async def main():
     # ── layout ────────────────────────────────────────────────────────────────
     panel_y = SORT_Y + SORT_H + 12   # 592
 
-    # Col A — stacked buttons (Start / Stop / New Array)
+    # Col A — stacked buttons
     buttons = [
-        Button((COL_A, panel_y + ROW1,  BTN_W, BTN_H), "Start",     "sort", btn_font),
-        Button((COL_A, panel_y + ROW2,  BTN_W, BTN_H), "Stop",      "stop", btn_font, danger=True),
-        Button((COL_A, panel_y + ROW3,  BTN_W, BTN_H), "New Array", "new",  btn_font),
+        Button((COL_A, panel_y + ROW1, BTN_W, BTN_H), "Start",     "sort", btn_font),
+        Button((COL_A, panel_y + ROW2, BTN_W, BTN_H), "Stop",      "stop", btn_font, danger=True),
+        Button((COL_A, panel_y + ROW3, BTN_W, BTN_H), "New Array", "new",  btn_font),
     ]
 
-    # Col B row 1 — Descending checkbox (vertically centered with Start button)
+    # Col B row 1 — Descending checkbox (centred on Start button)
     desc_cb = Checkbox(COL_B, panel_y + ROW1 + (BTN_H - 16) // 2, "Descending", btn_font)
 
-    # Col B row 2 — algorithm dropdown
+    # Col B row 2 — algorithm dropdown (label drawn above it in draw_ui)
     sort_options = [
         ("Bubble",    "bubble"),
         ("Selection", "selection"),
@@ -376,7 +428,7 @@ async def main():
     ]
     dropdown = Dropdown((COL_B, panel_y + ROW2, DROPDOWN_W, BTN_H), sort_options, btn_font)
 
-    # Col B row 3 — array size slider  (label auto-placed 18px above track)
+    # Col B row 3 — array size slider
     size_slider = Slider(
         track_rect=(COL_B, panel_y + TRACK_ROW, ARRAY_SLIDER_W, 14),
         font=comp_font,
@@ -384,7 +436,7 @@ async def main():
         initial=100, label="Array size",
     )
 
-    # Col C row 3 — volume slider  (sound label drawn in draw_ui at row 1)
+    # Col C row 3 — volume slider
     vol_slider = Slider(
         track_rect=(COL_C, panel_y + TRACK_ROW, VOL_SLIDER_W, 14),
         font=comp_font,
@@ -437,7 +489,7 @@ async def main():
                         break
 
         draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown, size_slider, vol_slider,
-                title_font, comp_font, title_grad)
+                title_font, comp_font, title_grad, bg_surf)
         pygame.display.flip()
         await asyncio.sleep(0)
 
