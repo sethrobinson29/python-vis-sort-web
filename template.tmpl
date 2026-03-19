@@ -211,85 +211,34 @@ function show_infobox() {
             color: var(--text);
         }
 
-        /* loading screen */
+        /* loading screen — simple centred layout, no fragmented fake window */
         #transfer {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            gap: 0;
+            gap: 10px;
         }
 
-        /* Win95-style progress dialog wrapper */
-        #transfer::before {
-            content: "Sorting Algorithm Visualizer";
-            display: block;
-            width: 340px;
-            background: linear-gradient(to right, var(--navy), var(--navy2));
-            color: var(--white);
-            font-weight: bold;
-            font-size: 11px;
-            padding: 4px 8px;
-            border-top: 2px solid var(--white);
-            border-left: 2px solid var(--white);
-            border-right: 2px solid var(--darker);
-        }
-
-        #transfer::after {
-            content: "";
-            display: block;
-            width: 340px;
-            height: 12px;
-            background: var(--bg);
-            border-left: 2px solid var(--white);
-            border-right: 2px solid var(--darker);
-            border-bottom: 2px solid var(--darker);
-        }
-
-        /* inner body of the dialog */
-        #status, #progress {
-            width: 340px;
-            border-left: 2px solid var(--white);
-            border-right: 2px solid var(--darker);
-            background: var(--bg);
-            padding: 0 12px;
-        }
+        /* suppress the old pseudo-element window frame */
+        #transfer::before, #transfer::after { content: none; display: none; }
 
         #status {
-            font-size: 0.85rem;
-            color: var(--text);
-            padding-top: 12px;
-        }
-
-        #progress {
-            appearance: none;
-            -webkit-appearance: none;
-            display: block;
-            height: 18px;
-            padding: 0 12px;
-            padding-bottom: 12px;
-            /* inner progress track: sunken */
+            font-size: 0.9rem;
+            color: var(--white);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.6);
+            background: transparent;
             border: none;
-            overflow: visible;
+            padding: 0;
+            width: auto;
         }
 
-        /* wrap progress in a sunken inset */
         #progress {
             -webkit-appearance: none;
             appearance: none;
-            width: 340px;
-            height: 36px;
-            border-left: 2px solid var(--white);
-            border-right: 2px solid var(--darker);
-            background: var(--bg);
-            padding: 8px 12px 12px 12px;
-        }
-
-        /* the actual bar inside */
-        progress#progress {
             display: block;
-            width: 316px;
+            width: 340px;
             height: 16px;
             border-top: 1px solid var(--darker);
             border-left: 1px solid var(--darker);
@@ -303,7 +252,7 @@ function show_infobox() {
         #progress::-webkit-progress-value { background: var(--navy); }
         #progress::-moz-progress-bar      { background: var(--navy); }
 
-        /* Win95 dialog window for infobox */
+        /* Win95 dialog window — crisp 1px black outer edge, then 3D border inside */
         #infobox {
             position: fixed;
             background: var(--bg);
@@ -313,12 +262,11 @@ function show_infobox() {
             text-align: left;
             padding: 0;
             min-width: 300px;
-            /* raised 3D border */
-            border-top: 2px solid var(--white);
-            border-left: 2px solid var(--white);
-            border-right: 2px solid var(--darker);
-            border-bottom: 2px solid var(--darker);
-            box-shadow: 1px 1px 0 var(--dark), -1px -1px 0 var(--dark);
+            /* outer black ring separates window from any background */
+            box-shadow: 0 0 0 1px #000000;
+            /* Win95 raised 3D border */
+            border: 2px solid;
+            border-color: var(--white) var(--darker) var(--darker) var(--white);
             z-index: 999999;
         }
 
@@ -330,7 +278,6 @@ function show_infobox() {
             padding: 3px 8px;
             font-size: 0.85rem;
             font-weight: bold;
-            margin-bottom: 0;
         }
 
         #infobox span {

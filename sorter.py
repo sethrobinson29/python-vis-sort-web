@@ -24,8 +24,8 @@ def swapVals(arr, i, j):
     arr[i] = tmp
 
 # colors for drawing values — pre-converted from hex to RGB
-_hex_colors = ["#000080", "#0000FF", "#0080FF", "#00CFFF", "#00FFFF",
-               "#00FF80", "#00CC00", "#88CC00", "#FFCC00", "#FF4400"]
+_hex_colors = ["#FF4400", "#FFCC00", "#88CC00", "#00CC00", "#00FF80",
+               "#00FFFF", "#00CFFF", "#0080FF", "#0000FF", "#000080"]
 colors = [pygame.Color(c) for c in _hex_colors]
 
 

@@ -21,8 +21,8 @@ WHITE = WIN_WHITE
 RED   = WIN_RED
 
 # ── layout constants ──────────────────────────────────────────────────────────
-WIN_W, WIN_H   = 1100, 750
-SORT_W, SORT_H = 1015, 500
+WIN_W, WIN_H   = 1100, 820
+SORT_W, SORT_H = 1015, 570
 SORT_X, SORT_Y = 42, 80
 
 SLIDER_MIN, SLIDER_MAX, SLIDER_STEP = 100, 500, 5
