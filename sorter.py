@@ -24,8 +24,8 @@ def swapVals(arr, i, j):
     arr[i] = tmp
 
 # colors for drawing values — pre-converted from hex to RGB
-_hex_colors = ["#F9035E", "#F01E5F", "#E73860", "#DE5361", "#D56E62",
-               "#CC8864", "#C3A365", "#BABE66", "#B1D867", "#A8F368"]
+_hex_colors = ["#FF4400", "#FFCC00", "#88CC00", "#00CC00", "#00FF80",
+               "#00FFFF", "#00CFFF", "#0080FF", "#0000FF", "#000080"]
 colors = [pygame.Color(c) for c in _hex_colors]
 
 
@@ -69,7 +69,7 @@ class Sorter:
             tone.play()
 
     def drawNums(self):
-        self.surface.fill((0, 0, 52))
+        self.surface.fill((0, 0, 0))
         bar_width = max(1, self.width // self.numBars) if self.numBars else 1
         x_step = (self.width - 10) / self.numBars if self.numBars else 1
 
