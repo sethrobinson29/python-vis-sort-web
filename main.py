@@ -23,8 +23,8 @@ RED   = WIN_RED
 WIN_W, WIN_H   = 1100, 820
 SORT_W, SORT_H = 1015, 550
 
-FRAME_X = 14   # desktop gap — outer window frame margin
-FRAME_Y = 14
+FRAME_X = 28   # desktop gap — outer window frame margin (≈1.75 crosshatch tiles)
+FRAME_Y = 20
 _IX = FRAME_X + 2   # inner content left edge (= 16)
 _IY = FRAME_Y + 2   # inner content top edge  (= 16)
 
@@ -53,7 +53,7 @@ SLIDER_MIN, SLIDER_MAX, SLIDER_STEP = 100, 500, 5
 #   ROW3 = 100    New Array, slider labels
 #   TRK  = 118    slider tracks
 
-COL_A, BTN_W  = 34, 110
+COL_A, BTN_W  = 44, 110
 COL_B          = 176
 COL_C          = 490
 COL_D          = 740
@@ -353,7 +353,7 @@ def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
             size_slider, vol_slider, font, comp_font, title_grad, bg_surf, sorting=False):
     screen.blit(bg_surf, (0, 0))
 
-    # outer window frame — floats on teal desktop, fills interior gray
+    # outer window frame — fills interior gray, floats on teal desktop
     frame_rect = pygame.Rect(FRAME_X, FRAME_Y, WIN_W - 2 * FRAME_X, WIN_H - 2 * FRAME_Y)
     draw_raised(screen, frame_rect)
 

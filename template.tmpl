@@ -71,7 +71,7 @@ async def custom_site():
 
 
     def ui_callback(pkg):
-        platform.window.infobox.innerHTML = f"<strong>Sorting Algorithm Visualizer</strong><br><span style='opacity:0.75;font-weight:normal'>{pkg}</span>"
+        platform.window.infotext.innerHTML = f"<strong>Sorting Algorithm Visualizer</strong><br><span style='opacity:0.75;font-weight:normal'>{pkg}</span>"
 
     await shell.source(main, callback=ui_callback)
 
@@ -211,34 +211,25 @@ function show_infobox() {
             color: var(--text);
         }
 
-        /* loading screen — simple centred layout, no fragmented fake window */
-        #transfer {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            gap: 10px;
+        /* #transfer is kept as an empty placeholder for Pygbag JS compatibility */
+        #transfer { display: none; }
+
+        /* progress area inside the infobox dialog */
+        #infoprogress {
+            padding: 6px 12px 10px;
         }
 
-        /* suppress the old pseudo-element window frame */
-        #transfer::before, #transfer::after { content: none; display: none; }
-
         #status {
-            font-size: 0.9rem;
-            color: var(--white);
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.6);
-            background: transparent;
-            border: none;
-            padding: 0;
-            width: auto;
+            font-size: 0.8rem;
+            color: var(--text);
+            margin-bottom: 4px;
         }
 
         #progress {
             -webkit-appearance: none;
             appearance: none;
             display: block;
-            width: 340px;
+            width: 100%;
             height: 16px;
             border-top: 1px solid var(--darker);
             border-left: 1px solid var(--darker);
@@ -325,10 +316,7 @@ function show_infobox() {
 
 <body>
 
-    <div id="transfer">
-        <div id="status">Loading...</div>
-        <progress value="0" max="100" id="progress"></progress>
-    </div>
+    <div id="transfer"></div>
 
 
 
@@ -344,7 +332,13 @@ height="{{cookiecutter.height}}px"
     oncontextmenu="event.preventDefault()" tabindex=1 hidden>
     </canvas>
 
-    <div id="infobox"><strong>Sorting Algorithm Visualizer</strong><br><span style="opacity:0.75;font-weight:normal">Loading...</span></div>
+    <div id="infobox">
+        <div id="infotext"><strong>Sorting Algorithm Visualizer</strong><br><span style="opacity:0.75;font-weight:normal">Loading...</span></div>
+        <div id="infoprogress">
+            <div id="status">Loading...</div>
+            <progress value="0" max="100" id="progress"></progress>
+        </div>
+    </div>
 
     <div id=html></div>
 
