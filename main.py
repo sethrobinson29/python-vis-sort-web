@@ -478,12 +478,20 @@ def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
     # palette buttons
     for pb in pal_btns:
         selected = pb["key"] == palette_state["current"]
-        if selected:
+        if sorting:
+            draw_raised(screen, pb["rect"], WIN_GRAY)
+            t = comp_font.render(pb["label"], False, WIN_LIGHT)
+            pos = t.get_rect(center=pb["rect"].center)
+            screen.blit(t, pos.move(1, 1))
+            screen.blit(comp_font.render(pb["label"], False, WIN_DARK), pos)
+        elif selected:
             draw_sunken(screen, pb["rect"])
+            t = comp_font.render(pb["label"], False, WIN_TEXT)
+            screen.blit(t, t.get_rect(center=pb["rect"].center))
         else:
             draw_raised(screen, pb["rect"], WIN_GRAY)
-        t = comp_font.render(pb["label"], False, WIN_TEXT)
-        screen.blit(t, t.get_rect(center=pb["rect"].center))
+            t = comp_font.render(pb["label"], False, WIN_TEXT)
+            screen.blit(t, t.get_rect(center=pb["rect"].center))
 
     # palette swatches
     for i, c in enumerate(palette_state["colors"]):
@@ -510,7 +518,7 @@ def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
         modal.draw(screen, font)
 
     if info_modal.is_open:
-        info_modal.draw(screen, font)
+        info_modal.draw(screen, font, sorting=sorting)
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
@@ -615,7 +623,7 @@ async def main():
                 _im_result = info_modal.handle_event(event)
                 if _im_result == "close":
                     info_modal.close()
-                elif _im_result in ("prev", "next"):
+                elif _im_result in ("prev", "next") and not sorting:
                     _cur_idx = ALGO_ORDER.index(info_modal._algo_key)
                     _delta   = -1 if _im_result == "prev" else 1
                     _new_key = ALGO_ORDER[(_cur_idx + _delta) % len(ALGO_ORDER)]
@@ -671,7 +679,7 @@ async def main():
             if desc_cb.handle_event(event, disabled=sorting):
                 sorter.descending = desc_cb.checked
 
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not sorting:
                 for pb in pal_btns:
                     if not pb["rect"].collidepoint(event.pos):
                         continue
@@ -710,6 +718,7 @@ async def main():
             disabled_rects += [
                 desc_cb._hit_rect(), dropdown.rect,
                 size_slider.track, size_slider.thumb_rect(),
+                *[pb["rect"] for pb in pal_btns],
             ]
         if any(r.collidepoint(mp) for r in disabled_rects):
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_NO)

@@ -1251,7 +1251,7 @@ class InfoModal:
         self.is_open = False
 
     # ── draw ──────────────────────────────────────────────────────────────────
-    def draw(self, screen, title_font):
+    def draw(self, screen, title_font, sorting=False):
         screen.blit(self._overlay, (0, 0))
         draw_raised(screen, self.rect)
 
@@ -1265,15 +1265,19 @@ class InfoModal:
         xt = self.btn_font.render("X", False, WIN_TEXT)
         screen.blit(xt, xt.get_rect(center=self._x_btn.center))
 
-        # nav bar
+        # nav bar — prev/next are disabled while a sort is running
         algo_name = ALGO_INFO.get(self._algo_key, {}).get("name", self._algo_key or "")
         draw_sunken(screen, self._nav_rect)
-        draw_raised(screen, self._prev_btn)
-        pt = self.btn_font.render("< Prev", False, WIN_TEXT)
-        screen.blit(pt, pt.get_rect(center=self._prev_btn.center))
-        draw_raised(screen, self._next_btn)
-        nt = self.btn_font.render("Next >", False, WIN_TEXT)
-        screen.blit(nt, nt.get_rect(center=self._next_btn.center))
+        for btn_rect, label in ((self._prev_btn, "< Prev"), (self._next_btn, "Next >")):
+            draw_raised(screen, btn_rect, WIN_GRAY)
+            if sorting:
+                t = self.btn_font.render(label, False, WIN_LIGHT)
+                pos = t.get_rect(center=btn_rect.center)
+                screen.blit(t, pos.move(1, 1))
+                screen.blit(self.btn_font.render(label, False, WIN_DARK), pos)
+            else:
+                t = self.btn_font.render(label, False, WIN_TEXT)
+                screen.blit(t, t.get_rect(center=btn_rect.center))
         nav_lbl = self._nav_font.render(algo_name, False, WIN_TEXT)
         screen.blit(nav_lbl, nav_lbl.get_rect(center=self._nav_rect.center))
 
