@@ -70,7 +70,12 @@ async def custom_site():
     __import__(__name__).__file__ = main
 
 
+    _pct = [85]
+    platform.window.progress.value = 85
+    platform.window.progress.removeAttribute("hidden")
     def ui_callback(pkg):
+        _pct[0] = min(_pct[0] + 1, 98)
+        platform.window.progress.value = _pct[0]
         platform.window.infotext.innerHTML = f"<strong>Sorting Algorithm Visualizer</strong><br><span style='opacity:0.75;font-weight:normal'>{pkg}</span>"
 
     await shell.source(main, callback=ui_callback)
@@ -242,6 +247,9 @@ function show_infobox() {
         #progress::-webkit-progress-bar   { background: var(--white); }
         #progress::-webkit-progress-value { background: var(--navy); }
         #progress::-moz-progress-bar      { background: var(--navy); }
+
+        /* Pygbag sets hidden=true between loading phases; keep bar visible */
+        #progress[hidden] { display: block !important; }
 
         /* Win95 dialog window — crisp 1px black outer edge, then 3D border inside */
         #infobox {
