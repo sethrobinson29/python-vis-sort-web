@@ -18,6 +18,34 @@ except ImportError:
 
 TTL_MS = 30 * 24 * 3600 * 1000   # 1-month localStorage TTL
 
+# ── module-level constants ─────────────────────────────────────────────────────
+SORT_OPTIONS = [
+    ("Bubble",    "bubble"),
+    ("Selection", "selection"),
+    ("Merge",     "merge"),
+    ("Quick",     "quick"),
+    ("Radix",     "radix"),
+]
+
+DISPATCH_MAP = {
+    "bubble":    "bubbleSort",
+    "selection": "selectionSort",
+    "merge":     "mergeSortWrap",
+    "quick":     "quickSortWrap",
+    "radix":     "radixSort",
+}
+
+PALETTES = {
+    "default": [pygame.Color(c) for c in [
+        "#FF4400", "#FFCC00", "#88CC00", "#00CC00", "#00FF80",
+        "#00FFFF", "#00CFFF", "#0080FF", "#0000FF", "#000080",
+    ]],
+    "phosphor": [pygame.Color(c) for c in [
+        "#001800", "#003300", "#005500", "#007700", "#009900",
+        "#00BB00", "#00DD00", "#33FF33", "#77FF77", "#AAFFAA",
+    ]],
+}
+
 
 # ── saved palette I/O ─────────────────────────────────────────────────────────
 def _validate_palette_data(data, result):
@@ -373,15 +401,9 @@ async def cancel_task(task_ref):
 
 async def run_sort(sorter, action, task_ref):
     await cancel_task(task_ref)
-    dispatch = {
-        "bubble":    sorter.bubbleSort,
-        "selection": sorter.selectionSort,
-        "merge":     sorter.mergeSortWrap,
-        "quick":     sorter.quickSortWrap,
-        "radix":     sorter.radixSort,
-    }
-    if action in dispatch:
-        task_ref[0] = asyncio.create_task(dispatch[action]())
+    if action in DISPATCH_MAP:
+        method = getattr(sorter, DISPATCH_MAP[action])
+        task_ref[0] = asyncio.create_task(method())
 
 
 def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
@@ -485,16 +507,6 @@ async def main():
     pygame.display.set_caption("vis-sort")
 
     # ── colour palettes ────────────────────────────────────────────────────────
-    PALETTES = {
-        "default": [pygame.Color(c) for c in [
-            "#FF4400", "#FFCC00", "#88CC00", "#00CC00", "#00FF80",
-            "#00FFFF", "#00CFFF", "#0080FF", "#0000FF", "#000080",
-        ]],
-        "phosphor": [pygame.Color(c) for c in [
-            "#001800", "#003300", "#005500", "#007700", "#009900",
-            "#00BB00", "#00DD00", "#33FF33", "#77FF77", "#AAFFAA",
-        ]],
-    }
     palette_state = {"current": "default", "colors": PALETTES["default"]}
 
     sort_surf = pygame.Surface((SORT_W, SORT_H))
@@ -529,14 +541,7 @@ async def main():
 
     desc_cb = Checkbox(COL_B, PANEL_Y + ROW1 + (BTN_H - 16) // 2, "Descending", btn_font)
 
-    sort_options = [
-        ("Bubble",    "bubble"),
-        ("Selection", "selection"),
-        ("Merge",     "merge"),
-        ("Quick",     "quick"),
-        ("Radix",     "radix"),
-    ]
-    dropdown = Dropdown((COL_B, PANEL_Y + ROW2, DROPDOWN_W, BTN_H), sort_options, btn_font)
+    dropdown = Dropdown((COL_B, PANEL_Y + ROW2, DROPDOWN_W, BTN_H), SORT_OPTIONS, btn_font)
 
     size_slider = Slider(
         track_rect=(COL_B, PANEL_Y + TRACK_ROW, ARRAY_SLIDER_W, 14),
@@ -678,4 +683,5 @@ async def main():
         await asyncio.sleep(0)
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
