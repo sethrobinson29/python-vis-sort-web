@@ -17,6 +17,14 @@ COMPARISON_ALGOS = [
     "selectionSort",
     "mergeSortWrap",
     "quickSortWrap",
+    "insertionSort",
+    "heapSort",
+    "shellSort",
+    "timSort",
+    "cocktailSort",
+    "combSort",
+    "gnomeSort",
+    "cycleSort",
 ]
 
 ALL_ALGOS = COMPARISON_ALGOS + ["radixSort"]

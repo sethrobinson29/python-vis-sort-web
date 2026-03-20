@@ -66,3 +66,27 @@ def test_start_enabled_when_not_sorting(font):
     btn = Button((0, 0, 80, 28), "Start", "sort", font)
     sorting = False
     assert ((btn.action == "stop") != sorting) is False
+
+
+# Info button
+def test_info_button_attrs(font):
+    btn = Button((0, 0, 28, 28), "?", "info", font)
+    assert btn.action == "info"
+    assert btn.danger is False
+
+
+def test_info_button_label(font):
+    btn = Button((0, 0, 28, 28), "?", "info", font)
+    assert btn.label == "?"
+
+
+def test_info_button_enabled_when_palette_modal_closed(font):
+    btn = Button((0, 0, 28, 28), "?", "info", font)
+    palette_modal_open = False
+    assert btn.is_clicked((14, 14), disabled=palette_modal_open) is True
+
+
+def test_info_button_disabled_when_palette_modal_open(font):
+    btn = Button((0, 0, 28, 28), "?", "info", font)
+    palette_modal_open = True
+    assert btn.is_clicked((14, 14), disabled=palette_modal_open) is False
