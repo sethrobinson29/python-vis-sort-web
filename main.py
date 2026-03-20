@@ -19,6 +19,50 @@ except ImportError:
 
 TTL_MS = 30 * 24 * 3600 * 1000   # 1-month localStorage TTL
 
+# ── module-level constants ─────────────────────────────────────────────────────
+SORT_OPTIONS = [
+    ("Bubble",    "bubble"),
+    ("Cocktail",  "cocktail"),
+    ("Comb",      "comb"),
+    ("Cycle",     "cycle"),
+    ("Gnome",     "gnome"),
+    ("Heap",      "heap"),
+    ("Insertion", "insertion"),
+    ("Merge",     "merge"),
+    ("Quick",     "quick"),
+    ("Radix",     "radix"),
+    ("Selection", "selection"),
+    ("Shell",     "shell"),
+    ("Tim",       "tim"),
+]
+
+DISPATCH_MAP = {
+    "bubble":    "bubbleSort",
+    "selection": "selectionSort",
+    "merge":     "mergeSortWrap",
+    "quick":     "quickSortWrap",
+    "radix":     "radixSort",
+    "insertion": "insertionSort",
+    "heap":      "heapSort",
+    "shell":     "shellSort",
+    "tim":       "timSort",
+    "cocktail":  "cocktailSort",
+    "comb":      "combSort",
+    "gnome":     "gnomeSort",
+    "cycle":     "cycleSort",
+}
+
+PALETTES = {
+    "default": [pygame.Color(c) for c in [
+        "#FF4400", "#FFCC00", "#88CC00", "#00CC00", "#00FF80",
+        "#00FFFF", "#00CFFF", "#0080FF", "#0000FF", "#000080",
+    ]],
+    "phosphor": [pygame.Color(c) for c in [
+        "#001800", "#003300", "#005500", "#007700", "#009900",
+        "#00BB00", "#00DD00", "#33FF33", "#77FF77", "#AAFFAA",
+    ]],
+}
+
 
 # ── saved palette I/O ─────────────────────────────────────────────────────────
 def _validate_palette_data(data, result):
@@ -374,23 +418,9 @@ async def cancel_task(task_ref):
 
 async def run_sort(sorter, action, task_ref):
     await cancel_task(task_ref)
-    dispatch = {
-        "bubble":    sorter.bubbleSort,
-        "selection": sorter.selectionSort,
-        "merge":     sorter.mergeSortWrap,
-        "quick":     sorter.quickSortWrap,
-        "radix":     sorter.radixSort,
-        "insertion": sorter.insertionSort,
-        "heap":      sorter.heapSort,
-        "shell":     sorter.shellSort,
-        "tim":       sorter.timSort,
-        "cocktail":  sorter.cocktailSort,
-        "comb":      sorter.combSort,
-        "gnome":     sorter.gnomeSort,
-        "cycle":     sorter.cycleSort,
-    }
-    if action in dispatch:
-        task_ref[0] = asyncio.create_task(dispatch[action]())
+    if action in DISPATCH_MAP:
+        method = getattr(sorter, DISPATCH_MAP[action])
+        task_ref[0] = asyncio.create_task(method())
 
 
 def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
@@ -498,16 +528,6 @@ async def main():
     pygame.display.set_caption("vis-sort")
 
     # ── colour palettes ────────────────────────────────────────────────────────
-    PALETTES = {
-        "default": [pygame.Color(c) for c in [
-            "#FF4400", "#FFCC00", "#88CC00", "#00CC00", "#00FF80",
-            "#00FFFF", "#00CFFF", "#0080FF", "#0000FF", "#000080",
-        ]],
-        "phosphor": [pygame.Color(c) for c in [
-            "#001800", "#003300", "#005500", "#007700", "#009900",
-            "#00BB00", "#00DD00", "#33FF33", "#77FF77", "#AAFFAA",
-        ]],
-    }
     palette_state = {"current": "default", "colors": PALETTES["default"]}
 
     sort_surf = pygame.Surface((SORT_W, SORT_H))
@@ -543,22 +563,7 @@ async def main():
 
     desc_cb = Checkbox(COL_B, PANEL_Y + ROW1 + (BTN_H - 16) // 2, "Descending", btn_font)
 
-    sort_options = [
-        ("Bubble",    "bubble"),
-        ("Cocktail",  "cocktail"),
-        ("Comb",      "comb"),
-        ("Cycle",     "cycle"),
-        ("Gnome",     "gnome"),
-        ("Heap",      "heap"),
-        ("Insertion", "insertion"),
-        ("Merge",     "merge"),
-        ("Quick",     "quick"),
-        ("Radix",     "radix"),
-        ("Selection", "selection"),
-        ("Shell",     "shell"),
-        ("Tim",       "tim"),
-    ]
-    dropdown = Dropdown((COL_B, PANEL_Y + ROW2, DROPDOWN_W, BTN_H), sort_options, btn_font)
+    dropdown = Dropdown((COL_B, PANEL_Y + ROW2, DROPDOWN_W, BTN_H), SORT_OPTIONS, btn_font)
     info_btn = Button((COL_B + DROPDOWN_W + 4, PANEL_Y + ROW2, BTN_H, BTN_H), "?", "info", btn_font)
 
     size_slider = Slider(
@@ -615,7 +620,7 @@ async def main():
                     _delta   = -1 if _im_result == "prev" else 1
                     _new_key = ALGO_ORDER[(_cur_idx + _delta) % len(ALGO_ORDER)]
                     dropdown.selected = next(
-                        i for i, (_, k) in enumerate(sort_options) if k == _new_key
+                        i for i, (_, k) in enumerate(SORT_OPTIONS) if k == _new_key
                     )
                     await cancel_task(task_ref)
                     sorter.makeNewVals(size_slider.value)
@@ -722,4 +727,5 @@ async def main():
         await asyncio.sleep(0)
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
