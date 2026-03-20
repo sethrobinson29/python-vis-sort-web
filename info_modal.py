@@ -825,55 +825,80 @@ def _draw_gnome_diagram(surf, rect):
 
 
 def _draw_cycle_diagram(surf, rect):
-    """5 circles in a ring with arrows, labeled with positions."""
+    """Array [3,1,2,5,4] decomposed into 2 cycles; each element labeled with its destination."""
     r = pygame.Rect(rect)
     surf.fill(WIN_GRAY, r)
     font = _font(10)
-    import math
-    n = 5
-    cx = r.x + r.width // 2
-    cy = r.y + r.height // 2 - 10   # shift ring up slightly for bottom label
-    ring_r = min(r.width, r.height) // 2 - 26
-    node_r = 14
-    # positions around the ring
-    positions = []
-    for i in range(n):
-        angle = -math.pi / 2 + 2 * math.pi * i / n
-        px = int(cx + ring_r * math.cos(angle))
-        py = int(cy + ring_r * math.sin(angle))
-        positions.append((px, py))
-    values = [3, 1, 4, 2, 5]
-    # draw arrows between consecutive nodes
-    for i in range(n):
-        p1 = positions[i]
-        p2 = positions[(i + 1) % n]
-        # shorten arrow to node edge
-        dx = p2[0] - p1[0]
-        dy = p2[1] - p1[1]
-        dist = max(1, (dx ** 2 + dy ** 2) ** 0.5)
-        ux, uy = dx / dist, dy / dist
-        start = (int(p1[0] + ux * node_r), int(p1[1] + uy * node_r))
-        end   = (int(p2[0] - ux * node_r), int(p2[1] - uy * node_r))
-        pygame.draw.line(surf, WIN_DARKER, start, end, 1)
-        # arrowhead
-        angle = math.atan2(dy, dx)
-        al = 7
-        aa = math.pi / 6
-        pygame.draw.line(surf, WIN_DARKER, end,
-                         (int(end[0] - al * math.cos(angle - aa)),
-                          int(end[1] - al * math.sin(angle - aa))), 1)
-        pygame.draw.line(surf, WIN_DARKER, end,
-                         (int(end[0] - al * math.cos(angle + aa)),
-                          int(end[1] - al * math.sin(angle + aa))), 1)
-    # draw nodes
-    for i, (px, py) in enumerate(positions):
-        pygame.draw.circle(surf, WIN_NAVY, (px, py), node_r)
-        pygame.draw.circle(surf, WIN_DARKER, (px, py), node_r, 1)
-        lbl = font.render(str(values[i]), False, WIN_WHITE)
-        surf.blit(lbl, lbl.get_rect(center=(px, py)))
-    # label at bottom, below the ring
-    title = font.render("cycle rotation", False, WIN_DARKER)
-    surf.blit(title, title.get_rect(centerx=cx, bottom=r.bottom - 2))
+    sm   = _font(9)
+
+    C1 = WIN_NAVY           # cycle 1 colour
+    C2 = (130, 60, 0)       # cycle 2 colour (dark orange)
+    BOX_W, BOX_H = 32, 20
+    ARR_GAP  = 8   # gap between initial-array boxes
+    CYC_GAP  = 14  # horizontal space for the inter-box arrow inside a cycle
+
+    # ── initial array row ─────────────────────────────────────────────────────
+    array      = [3, 1, 2, 5, 4]
+    box_colors = [C1, C1, C1, C2, C2]
+    n = len(array)
+    arr_w = n * BOX_W + (n - 1) * ARR_GAP
+    arr_x = r.x + (r.width - arr_w) // 2
+    arr_y = r.y + 4
+
+    in_lbl = sm.render("input:", False, WIN_DARKER)
+    surf.blit(in_lbl, (r.x + 4, arr_y + (BOX_H - in_lbl.get_height()) // 2))
+
+    for i, (val, col) in enumerate(zip(array, box_colors)):
+        bx = arr_x + i * (BOX_W + ARR_GAP)
+        br = pygame.Rect(bx, arr_y, BOX_W, BOX_H)
+        draw_sunken(surf, br, col)
+        vt = font.render(str(val), False, WIN_WHITE)
+        surf.blit(vt, vt.get_rect(center=br.center))
+        it = sm.render(str(i), False, WIN_DARKER)
+        surf.blit(it, it.get_rect(centerx=br.centerx, top=br.bottom + 3))
+
+    div_y = arr_y + BOX_H + 18
+    pygame.draw.line(surf, WIN_DARK, (r.x + 6, div_y), (r.right - 6, div_y), 1)
+
+    # ── two cycle panels side by side ─────────────────────────────────────────
+    panel_top = div_y + 7
+    mid_x     = r.x + r.width // 2
+
+    def draw_cycle(px, pw, elements, dest_pos, color, heading):
+        h_surf = font.render(heading, False, color)
+        surf.blit(h_surf, (px, panel_top))
+        n_el  = len(elements)
+        row_w = n_el * BOX_W + (n_el - 1) * CYC_GAP
+        bx0   = px + (pw - row_w) // 2
+        box_y = panel_top + h_surf.get_height() + 5
+
+        for j, (val, dst) in enumerate(zip(elements, dest_pos)):
+            bx = bx0 + j * (BOX_W + CYC_GAP)
+            br = pygame.Rect(bx, box_y, BOX_W, BOX_H)
+            draw_sunken(surf, br, color)
+            vt = font.render(str(val), False, WIN_WHITE)
+            surf.blit(vt, vt.get_rect(center=br.center))
+
+            if j < n_el - 1:
+                a1 = (bx + BOX_W + 2,          box_y + BOX_H // 2)
+                a2 = (bx + BOX_W + CYC_GAP - 2, box_y + BOX_H // 2)
+                pygame.draw.line(surf, WIN_DARKER, a1, a2, 1)
+                pygame.draw.polygon(surf, WIN_DARKER, [
+                    a2, (a2[0] - 5, a2[1] - 3), (a2[0] - 5, a2[1] + 3)
+                ])
+
+            dt = sm.render(f">pos {dst}", False, WIN_DARKER)
+            surf.blit(dt, dt.get_rect(centerx=br.centerx, top=box_y + BOX_H + 3))
+
+        wt = sm.render(f"{n_el} write{'s' if n_el != 1 else ''}", False, WIN_DARKER)
+        surf.blit(wt, wt.get_rect(centerx=px + pw // 2, top=box_y + BOX_H + 17))
+
+    # Cycle 1: item 3 (at pos 0) -> pos 2; displaces 2 -> pos 1; displaces 1 -> pos 0
+    draw_cycle(r.x + 2,   mid_x - r.x - 4,
+               [3, 2, 1], [2, 1, 0], C1, "Cycle 1:")
+    # Cycle 2: item 5 (at pos 3) -> pos 4; displaces 4 -> pos 3
+    draw_cycle(mid_x + 2, r.right - mid_x - 2,
+               [5, 4],    [4, 3],    C2, "Cycle 2:")
 
 
 def _draw_radix_diagram(surf, rect):
