@@ -22,7 +22,10 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install pygame-ce pygbag
+        run: pip install pygame-ce pygbag pytest pytest-asyncio
+
+      - name: Run tests
+        run: python -m pytest tests/ -v
 
       - name: Build with Pygbag
         run: python -m pygbag --build --template template.tmpl main.py
