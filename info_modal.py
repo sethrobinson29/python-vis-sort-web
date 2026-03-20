@@ -786,38 +786,72 @@ def _draw_comb_diagram(surf, rect):
 
 
 def _draw_gnome_diagram(surf, rect):
-    """7 bars; current element highlighted; backward arrow drawn below bars."""
+    """7 bars: forward-walk arrow above in-order region; step-back arrow below out-of-order pair."""
     r = pygame.Rect(rect)
     surf.fill(WIN_GRAY, r)
     n = 7
-    heights = [20, 35, 50, 80, 40, 65, 55]
-    ARROW_H = 28
-    font = _font(10)
-    baseline = r.bottom - ARROW_H - 10
-    bar_area_h = baseline - r.y - 8
-    scale = bar_area_h / max(heights)
-    scaled = [int(h * scale) for h in heights]
-    bar_w = (r.width - 20) // n
-    gap = max(1, (r.width - 20 - n * bar_w) // max(n - 1, 1))
-    current_idx = 3
+    heights    = [20, 35, 50, 80, 40, 65, 55]
+    gnome_idx  = 4   # gnome is here (40) — out of order with element behind it (80)
+    cmp_idx    = 3   # element being compared (80)
+    font       = _font(10)
+    FWDARROW_H = 20   # space at top reserved for the forward-walk arrow
+    BKWARROW_H = 28   # space at bottom for the step-back arrow
+    LEGEND_H   = 16
+    baseline   = r.bottom - BKWARROW_H - LEGEND_H - 4
+    bar_top    = r.y + FWDARROW_H + 4
+    bar_area_h = baseline - bar_top
+    scale      = bar_area_h / max(heights)
+    scaled     = [int(h * scale) for h in heights]
+    bar_w      = (r.width - 20) // n
+    gap        = max(1, (r.width - 20 - n * bar_w) // max(n - 1, 1))
+
+    PASSED_COL = WIN_NAVY
+    CMP_COL    = WIN_NAVY2          # light blue — element being compared
+    GNOME_COL  = (190, 70, 0)       # orange — gnome's position (out of order)
+    AHEAD_COL  = WIN_DARK
+
+    def bar_cx(i):
+        return r.x + 10 + i * (bar_w + gap) + bar_w // 2
+
     for i, h in enumerate(scaled):
         bx = r.x + 10 + i * (bar_w + gap)
-        color = WIN_NAVY2 if i == current_idx else (WIN_NAVY if i < current_idx else WIN_DARK)
+        if i < cmp_idx:
+            color = PASSED_COL
+        elif i == cmp_idx:
+            color = CMP_COL
+        elif i == gnome_idx:
+            color = GNOME_COL
+        else:
+            color = AHEAD_COL
         pygame.draw.rect(surf, color, (bx, baseline - h, bar_w, h))
         pygame.draw.rect(surf, WIN_DARKER, (bx, baseline - h, bar_w, h), 1)
     pygame.draw.line(surf, WIN_DARKER, (r.x + 8, baseline), (r.right - 8, baseline), 1)
-    # backward arrow + label drawn below the baseline
-    cur_cx  = r.x + 10 + current_idx * (bar_w + gap) + bar_w // 2
-    dest_cx = r.x + 10 + (current_idx - 1) * (bar_w + gap) + bar_w // 2
-    ay = baseline + 14
-    pygame.draw.line(surf, WIN_RED, (cur_cx, ay), (dest_cx, ay), 2)
-    pygame.draw.polygon(surf, WIN_RED, [(dest_cx, ay), (dest_cx + 7, ay - 4), (dest_cx + 7, ay + 4)])
-    lbl = font.render("step back", False, WIN_RED)
-    surf.blit(lbl, lbl.get_rect(centerx=(cur_cx + dest_cx) // 2, top=ay + 3))
+
+    # forward-walk arrow near top of bar area 0 → cmp_idx (all stepped forward because in order)
+    fwd_y  = bar_top + 6    # sits just inside the bar area, overlapping the short bars is fine
+    fwd_x1 = bar_cx(0)
+    fwd_x2 = bar_cx(cmp_idx)
+    pygame.draw.line(surf, WIN_NAVY, (fwd_x1, fwd_y), (fwd_x2, fwd_y), 2)
+    pygame.draw.polygon(surf, WIN_NAVY, [(fwd_x2, fwd_y), (fwd_x2 - 7, fwd_y - 4), (fwd_x2 - 7, fwd_y + 4)])
+    fwd_lbl = font.render("in order: step forward", False, WIN_NAVY)
+    surf.blit(fwd_lbl, fwd_lbl.get_rect(
+        centerx=(fwd_x1 + fwd_x2) // 2, top=fwd_y + 4))
+
+    # step-back arrow below bars cmp_idx ← gnome_idx (out of order: swap + step back)
+    bk_y   = baseline + 8
+    bk_x1  = bar_cx(gnome_idx)
+    bk_x2  = bar_cx(cmp_idx)
+    pygame.draw.line(surf, WIN_RED, (bk_x1, bk_y), (bk_x2, bk_y), 2)
+    pygame.draw.polygon(surf, WIN_RED, [(bk_x2, bk_y), (bk_x2 + 7, bk_y - 4), (bk_x2 + 7, bk_y + 4)])
+    bk_lbl = font.render("out of order: swap + step back", False, WIN_RED)
+    surf.blit(bk_lbl, bk_lbl.get_rect(
+        centerx=(bk_x1 + bk_x2) // 2, top=bk_y + 8))
+
     # legend
-    legend_y = r.bottom - 12
-    for col, label, lx in [(WIN_NAVY2, "current", r.x + 6), (WIN_NAVY, "visited", r.x + 90),
-                            (WIN_DARK, "ahead", r.x + 174)]:
+    legend_y = r.bottom - LEGEND_H + 2
+    for col, label, lx in [(CMP_COL,   "compare",  r.x + 6),
+                            (GNOME_COL, "gnome",    r.x + 100),
+                            (AHEAD_COL, "ahead",    r.x + 178)]:
         pygame.draw.rect(surf, col, (lx, legend_y, 10, 10))
         pygame.draw.rect(surf, WIN_DARKER, (lx, legend_y, 10, 10), 1)
         lt = font.render(label, False, WIN_TEXT)
@@ -825,7 +859,8 @@ def _draw_gnome_diagram(surf, rect):
 
 
 def _draw_cycle_diagram(surf, rect):
-    """Array [3,1,2,5,4] decomposed into 2 cycles; each element labeled with its destination."""
+    """Array [3,1,2,5,4] decomposed into 2 cycles; diagonal arrows connect each
+    element to its destination box in sorted position order."""
     r = pygame.Rect(rect)
     surf.fill(WIN_GRAY, r)
     font = _font(10)
@@ -835,7 +870,8 @@ def _draw_cycle_diagram(surf, rect):
     C2 = (130, 60, 0)       # cycle 2 colour (dark orange)
     BOX_W, BOX_H = 32, 20
     ARR_GAP  = 8   # gap between initial-array boxes
-    CYC_GAP  = 14  # horizontal space for the inter-box arrow inside a cycle
+    CYC_GAP  = 8   # gap between boxes within a cycle row
+    ARROW_H  = 6   # gap between top and bottom cycle rows
 
     # ── initial array row ─────────────────────────────────────────────────────
     array      = [3, 1, 2, 5, 4]
@@ -867,31 +903,36 @@ def _draw_cycle_diagram(surf, rect):
     def draw_cycle(px, pw, elements, dest_pos, color, heading):
         h_surf = font.render(heading, False, color)
         surf.blit(h_surf, (px, panel_top))
-        n_el  = len(elements)
-        row_w = n_el * BOX_W + (n_el - 1) * CYC_GAP
-        bx0   = px + (pw - row_w) // 2
-        box_y = panel_top + h_surf.get_height() + 5
 
+        n_el    = len(elements)
+        min_pos = min(dest_pos)
+        row_w   = n_el * BOX_W + (n_el - 1) * CYC_GAP
+        bx0     = px + (pw - row_w) // 2
+        top_y   = panel_top + h_surf.get_height() + 5
+        bot_y   = top_y + BOX_H + ARROW_H
+
+        # build bottom row: slot_vals[dest - min_pos] = value
+        slot_vals = [None] * n_el
         for j, (val, dst) in enumerate(zip(elements, dest_pos)):
+            slot_vals[dst - min_pos] = val
+
+        # top row — elements in write order
+        for j, val in enumerate(elements):
             bx = bx0 + j * (BOX_W + CYC_GAP)
-            br = pygame.Rect(bx, box_y, BOX_W, BOX_H)
+            br = pygame.Rect(bx, top_y, BOX_W, BOX_H)
             draw_sunken(surf, br, color)
             vt = font.render(str(val), False, WIN_WHITE)
             surf.blit(vt, vt.get_rect(center=br.center))
 
-            if j < n_el - 1:
-                a1 = (bx + BOX_W + 2,          box_y + BOX_H // 2)
-                a2 = (bx + BOX_W + CYC_GAP - 2, box_y + BOX_H // 2)
-                pygame.draw.line(surf, WIN_DARKER, a1, a2, 1)
-                pygame.draw.polygon(surf, WIN_DARKER, [
-                    a2, (a2[0] - 5, a2[1] - 3), (a2[0] - 5, a2[1] + 3)
-                ])
-
-            dt = sm.render(f">pos {dst}", False, WIN_DARKER)
-            surf.blit(dt, dt.get_rect(centerx=br.centerx, top=box_y + BOX_H + 3))
-
-        wt = sm.render(f"{n_el} write{'s' if n_el != 1 else ''}", False, WIN_DARKER)
-        surf.blit(wt, wt.get_rect(centerx=px + pw // 2, top=box_y + BOX_H + 17))
+        # bottom row — elements in sorted position order, with position index labels
+        for slot, val in enumerate(slot_vals):
+            bx = bx0 + slot * (BOX_W + CYC_GAP)
+            br = pygame.Rect(bx, bot_y, BOX_W, BOX_H)
+            draw_sunken(surf, br, color)
+            vt = font.render(str(val), False, WIN_WHITE)
+            surf.blit(vt, vt.get_rect(center=br.center))
+            pt = sm.render(str(min_pos + slot), False, WIN_DARKER)
+            surf.blit(pt, pt.get_rect(centerx=br.centerx, top=br.bottom + 3))
 
     # Cycle 1: item 3 (at pos 0) -> pos 2; displaces 2 -> pos 1; displaces 1 -> pos 0
     draw_cycle(r.x + 2,   mid_x - r.x - 4,
