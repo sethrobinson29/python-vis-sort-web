@@ -8,6 +8,7 @@ from sorter import Sorter
 from theme import *
 from theme import _IX, _IY, _font, _make_bg_tile, _make_bg_surf
 from widgets import Button, Slider, Checkbox, Dropdown
+from info_modal import InfoModal, ALGO_ORDER
 
 try:
     import js as _js
@@ -21,10 +22,18 @@ TTL_MS = 30 * 24 * 3600 * 1000   # 1-month localStorage TTL
 # ── module-level constants ─────────────────────────────────────────────────────
 SORT_OPTIONS = [
     ("Bubble",    "bubble"),
-    ("Selection", "selection"),
+    ("Cocktail",  "cocktail"),
+    ("Comb",      "comb"),
+    ("Cycle",     "cycle"),
+    ("Gnome",     "gnome"),
+    ("Heap",      "heap"),
+    ("Insertion", "insertion"),
     ("Merge",     "merge"),
     ("Quick",     "quick"),
     ("Radix",     "radix"),
+    ("Selection", "selection"),
+    ("Shell",     "shell"),
+    ("Tim",       "tim"),
 ]
 
 DISPATCH_MAP = {
@@ -33,6 +42,14 @@ DISPATCH_MAP = {
     "merge":     "mergeSortWrap",
     "quick":     "quickSortWrap",
     "radix":     "radixSort",
+    "insertion": "insertionSort",
+    "heap":      "heapSort",
+    "shell":     "shellSort",
+    "tim":       "timSort",
+    "cocktail":  "cocktailSort",
+    "comb":      "combSort",
+    "gnome":     "gnomeSort",
+    "cycle":     "cycleSort",
 }
 
 PALETTES = {
@@ -408,7 +425,7 @@ async def run_sort(sorter, action, task_ref):
 
 def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
             size_slider, vol_slider, font, comp_font, title_grad, bg_surf,
-            pal_btns, palette_state, modal, sorting=False):
+            pal_btns, palette_state, modal, info_btn, info_modal, sorting=False):
     screen.blit(bg_surf, (0, 0))
 
     # outer window frame — fills interior gray, floats on teal desktop
@@ -461,12 +478,20 @@ def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
     # palette buttons
     for pb in pal_btns:
         selected = pb["key"] == palette_state["current"]
-        if selected:
+        if sorting:
+            draw_raised(screen, pb["rect"], WIN_GRAY)
+            t = comp_font.render(pb["label"], False, WIN_LIGHT)
+            pos = t.get_rect(center=pb["rect"].center)
+            screen.blit(t, pos.move(1, 1))
+            screen.blit(comp_font.render(pb["label"], False, WIN_DARK), pos)
+        elif selected:
             draw_sunken(screen, pb["rect"])
+            t = comp_font.render(pb["label"], False, WIN_TEXT)
+            screen.blit(t, t.get_rect(center=pb["rect"].center))
         else:
             draw_raised(screen, pb["rect"], WIN_GRAY)
-        t = comp_font.render(pb["label"], False, WIN_TEXT)
-        screen.blit(t, t.get_rect(center=pb["rect"].center))
+            t = comp_font.render(pb["label"], False, WIN_TEXT)
+            screen.blit(t, t.get_rect(center=pb["rect"].center))
 
     # palette swatches
     for i, c in enumerate(palette_state["colors"]):
@@ -487,9 +512,13 @@ def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
     draw_sunken(screen, border)
     screen.blit(sort_surf, (SORT_X, SORT_Y))
     dropdown.draw(screen, disabled=blocked)
+    info_btn.draw(screen, disabled=modal.is_open)
 
     if modal.is_open:
         modal.draw(screen, font)
+
+    if info_modal.is_open:
+        info_modal.draw(screen, font, sorting=sorting)
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
@@ -519,6 +548,7 @@ async def main():
     sorter._mixer_ok = _mixer_ok
 
     modal = ColorPickerModal(btn_font, comp_font)
+    info_modal = InfoModal(btn_font, comp_font)
 
     # pre-render background and title bar gradient
     bg_surf    = _make_bg_surf(_make_bg_tile())
@@ -542,6 +572,7 @@ async def main():
     desc_cb = Checkbox(COL_B, PANEL_Y + ROW1 + (BTN_H - 16) // 2, "Descending", btn_font)
 
     dropdown = Dropdown((COL_B, PANEL_Y + ROW2, DROPDOWN_W, BTN_H), SORT_OPTIONS, btn_font)
+    info_btn = Button((COL_B + DROPDOWN_W + 4, PANEL_Y + ROW2, BTN_H, BTN_H), "?", "info", btn_font)
 
     size_slider = Slider(
         track_rect=(COL_B, PANEL_Y + TRACK_ROW, ARRAY_SLIDER_W, 14),
@@ -587,7 +618,24 @@ async def main():
                 if event.key == pygame.K_m:
                     sorter.sound_enabled = not sorter.sound_enabled
 
-            # modal intercepts all events while open
+            # info modal intercepts all events while open
+            if info_modal.is_open:
+                _im_result = info_modal.handle_event(event)
+                if _im_result == "close":
+                    info_modal.close()
+                elif _im_result in ("prev", "next") and not sorting:
+                    _cur_idx = ALGO_ORDER.index(info_modal._algo_key)
+                    _delta   = -1 if _im_result == "prev" else 1
+                    _new_key = ALGO_ORDER[(_cur_idx + _delta) % len(ALGO_ORDER)]
+                    dropdown.selected = next(
+                        i for i, (_, k) in enumerate(SORT_OPTIONS) if k == _new_key
+                    )
+                    await cancel_task(task_ref)
+                    sorter.makeNewVals(size_slider.value)
+                    info_modal.open(_new_key)
+                continue
+
+            # palette modal intercepts all events while open
             if modal.is_open:
                 result = modal.handle_event(event)
                 if result == "ok":
@@ -631,7 +679,7 @@ async def main():
             if desc_cb.handle_event(event, disabled=sorting):
                 sorter.descending = desc_cb.checked
 
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1 and not sorting:
                 for pb in pal_btns:
                     if not pb["rect"].collidepoint(event.pos):
                         continue
@@ -645,6 +693,10 @@ async def main():
                         sorter.colors            = palette_state["colors"]
                         sorter.drawNums()
                     break
+
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if info_btn.is_clicked(event.pos, disabled=modal.is_open):
+                    info_modal.open(dropdown.selected_action)
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 for btn in buttons:
@@ -666,6 +718,7 @@ async def main():
             disabled_rects += [
                 desc_cb._hit_rect(), dropdown.rect,
                 size_slider.track, size_slider.thumb_rect(),
+                *[pb["rect"] for pb in pal_btns],
             ]
         if any(r.collidepoint(mp) for r in disabled_rects):
             pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_NO)
@@ -678,7 +731,7 @@ async def main():
 
         draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown, size_slider, vol_slider,
                 title_font, comp_font, title_grad, bg_surf,
-                pal_btns, palette_state, modal, sorting=sorting)
+                pal_btns, palette_state, modal, info_btn, info_modal, sorting=sorting)
         pygame.display.flip()
         await asyncio.sleep(0)
 

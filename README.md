@@ -10,11 +10,23 @@ Styled with a **Windows 95/98 theme** — silver 3D widgets, navy title bar grad
 
 ## Algorithms
 
-- Bubble Sort (with early-exit for already-sorted arrays)
-- Selection Sort
-- Merge Sort
-- Quick Sort
-- Radix Sort
+| Algorithm | Notes |
+|---|---|
+| Bubble Sort | Early-exit when already sorted |
+| Cocktail Sort | Bidirectional bubble with shrinking window |
+| Comb Sort | Gap ÷ 1.3 each pass |
+| Cycle Sort | Minimises writes; direct placement |
+| Gnome Sort | Single-pointer; steps forward and back |
+| Heap Sort | Max-heap; O(n log n) guaranteed |
+| Insertion Sort | Shift-based; efficient on nearly-sorted data |
+| Merge Sort | Stable divide-and-conquer; O(n log n) |
+| Quick Sort | In-place partition with median pivot |
+| Radix Sort | LSD non-comparative; O(nk) |
+| Selection Sort | Minimal swaps; always O(n²) comparisons |
+| Shell Sort | Gap = n÷2, halved each pass |
+| Tim Sort | Hybrid insertion+merge (MIN_RUN=32) |
+
+Click the **?** button next to the algorithm dropdown to open an info sheet with time complexities, origin, use cases, a summary, and a diagram for the selected algorithm. Use **< Prev** / **Next >** to browse all algorithms without closing the modal.
 
 ## Controls
 
@@ -49,6 +61,15 @@ python main.py
 # Browser (WASM) — open http://localhost:8000
 python -m pygbag --template template.tmpl main.py
 ```
+
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+219 tests covering all 13 sorting algorithms, widgets (Button, Dropdown), color palettes, and the info modal.
 
 ## Credits
 

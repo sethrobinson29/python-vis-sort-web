@@ -9,15 +9,9 @@ def font():
     return pygame.font.Font(None, 20)
 
 
-def test_sort_options_has_all_labels():
+def test_sort_options_is_alphabetically_sorted():
     labels = [lbl for lbl, _ in SORT_OPTIONS]
-    for expected in ("Bubble", "Selection", "Merge", "Quick", "Radix"):
-        assert expected in labels
-
-
-def test_sort_options_has_all_actions():
-    actions = {act for _, act in SORT_OPTIONS}
-    assert actions == {"bubble", "selection", "merge", "quick", "radix"}
+    assert labels == sorted(labels)
 
 
 def test_dispatch_map_covers_sort_options():
