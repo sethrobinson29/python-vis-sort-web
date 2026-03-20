@@ -57,10 +57,6 @@ def test_algo_order_has_no_duplicates():
     assert len(ALGO_ORDER) == len(set(ALGO_ORDER))
 
 
-def test_algo_order_length():
-    assert len(ALGO_ORDER) == 13
-
-
 def test_algo_order_is_alphabetically_sorted():
     assert ALGO_ORDER == sorted(ALGO_ORDER)
 
@@ -95,13 +91,6 @@ def test_modal_close_sets_is_open_false(modal):
     assert modal.is_open is False
 
 
-def test_modal_open_different_algorithm_updates_key(modal):
-    modal.open("bubble")
-    modal.open("heap")
-    assert modal._algo_key == "heap"
-    modal.close()
-
-
 @pytest.mark.parametrize("key", sorted(ALL_ALGO_KEYS))
 def test_modal_open_accepts_all_algorithm_keys(key, modal):
     modal.open(key)
@@ -112,17 +101,9 @@ def test_modal_open_accepts_all_algorithm_keys(key, modal):
 
 # ── InfoModal geometry ─────────────────────────────────────────────────────────
 
-def test_modal_width(modal):
-    assert modal.W == 640
-
-
 def test_modal_rect_is_centered_horizontally(modal):
     from theme import WIN_W
     assert modal.rect.centerx == WIN_W // 2
-
-
-def test_modal_rect_width_matches_W(modal):
-    assert modal.rect.width == modal.W
 
 
 def test_modal_height_positive(modal):

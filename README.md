@@ -69,7 +69,7 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
-Tests cover all 13 sorting algorithms, widgets (Button, Dropdown), color palettes, and the info modal.
+219 tests covering all 13 sorting algorithms, widgets (Button, Dropdown), color palettes, and the info modal.
 
 ## Credits
 

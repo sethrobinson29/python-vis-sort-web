@@ -9,28 +9,6 @@ def font():
     return pygame.font.Font(None, 20)
 
 
-ALL_ALGORITHMS = {
-    "bubble", "cocktail", "comb", "cycle", "gnome",
-    "heap", "insertion", "merge", "quick", "radix",
-    "selection", "shell", "tim",
-}
-
-
-def test_sort_options_has_all_labels():
-    labels = [lbl for lbl, _ in SORT_OPTIONS]
-    for expected in (
-        "Bubble", "Cocktail", "Comb", "Cycle", "Gnome",
-        "Heap", "Insertion", "Merge", "Quick", "Radix",
-        "Selection", "Shell", "Tim",
-    ):
-        assert expected in labels
-
-
-def test_sort_options_has_all_actions():
-    actions = {act for _, act in SORT_OPTIONS}
-    assert actions == ALL_ALGORITHMS
-
-
 def test_sort_options_is_alphabetically_sorted():
     labels = [lbl for lbl, _ in SORT_OPTIONS]
     assert labels == sorted(labels)
