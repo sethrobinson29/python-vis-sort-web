@@ -379,6 +379,14 @@ async def run_sort(sorter, action, task_ref):
         "merge":     sorter.mergeSortWrap,
         "quick":     sorter.quickSortWrap,
         "radix":     sorter.radixSort,
+        "insertion": sorter.insertionSort,
+        "heap":      sorter.heapSort,
+        "shell":     sorter.shellSort,
+        "tim":       sorter.timSort,
+        "cocktail":  sorter.cocktailSort,
+        "comb":      sorter.combSort,
+        "gnome":     sorter.gnomeSort,
+        "cycle":     sorter.cycleSort,
     }
     if action in dispatch:
         task_ref[0] = asyncio.create_task(dispatch[action]())
@@ -535,6 +543,14 @@ async def main():
         ("Merge",     "merge"),
         ("Quick",     "quick"),
         ("Radix",     "radix"),
+        ("Insertion", "insertion"),
+        ("Heap",      "heap"),
+        ("Shell",     "shell"),
+        ("Tim",       "tim"),
+        ("Cocktail",  "cocktail"),
+        ("Comb",      "comb"),
+        ("Gnome",     "gnome"),
+        ("Cycle",     "cycle"),
     ]
     dropdown = Dropdown((COL_B, PANEL_Y + ROW2, DROPDOWN_W, BTN_H), sort_options, btn_font)
 

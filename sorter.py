@@ -245,3 +245,230 @@ class Sorter:
         if self.descending:
             self.vals.reverse()
         await self.final_pass()
+
+    async def insertionSort(self):
+        self.comps = 0
+        draw_every = max(1, self.numBars // 100)
+        for i in range(1, self.numBars):
+            key = self.vals[i]
+            j = i - 1
+            while j >= 0:
+                self.comps += 1
+                if self.comps % draw_every == 0:
+                    self.highlighted = [j, i]
+                    self.drawNums()
+                    await asyncio.sleep(0)
+                if (self.vals[j] > key) if not self.descending else (self.vals[j] < key):
+                    self.vals[j + 1] = self.vals[j]
+                    j -= 1
+                else:
+                    break
+            self.vals[j + 1] = key
+        await self.final_pass()
+
+    async def _siftDown(self, root, end, draw_every):
+        while True:
+            child = 2 * root + 1
+            if child > end:
+                break
+            if child + 1 <= end:
+                self.comps += 1
+                if (self.vals[child] < self.vals[child + 1]) if not self.descending else (self.vals[child] > self.vals[child + 1]):
+                    child += 1
+            self.comps += 1
+            if (self.vals[root] < self.vals[child]) if not self.descending else (self.vals[root] > self.vals[child]):
+                swapVals(self.vals, root, child)
+                self.highlighted = [root, child]
+                if self.comps % draw_every == 0:
+                    self.drawNums()
+                    await asyncio.sleep(0)
+                root = child
+            else:
+                break
+
+    async def heapSort(self):
+        self.comps = 0
+        draw_every = max(1, self.numBars // 100)
+        n = self.numBars
+        for start in range(n // 2 - 1, -1, -1):
+            await self._siftDown(start, n - 1, draw_every)
+        for end in range(n - 1, 0, -1):
+            swapVals(self.vals, 0, end)
+            self.highlighted = [0, end]
+            if self.comps % draw_every == 0:
+                self.drawNums()
+                await asyncio.sleep(0)
+            await self._siftDown(0, end - 1, draw_every)
+        await self.final_pass()
+
+    async def shellSort(self):
+        self.comps = 0
+        draw_every = max(1, self.numBars // 100)
+        n = self.numBars
+        gap = n // 2
+        while gap > 0:
+            for i in range(gap, n):
+                temp = self.vals[i]
+                j = i
+                while j >= gap:
+                    self.comps += 1
+                    if self.comps % draw_every == 0:
+                        self.highlighted = [j, i]
+                        self.drawNums()
+                        await asyncio.sleep(0)
+                    if (self.vals[j - gap] > temp) if not self.descending else (self.vals[j - gap] < temp):
+                        self.vals[j] = self.vals[j - gap]
+                        j -= gap
+                    else:
+                        break
+                self.vals[j] = temp
+            gap //= 2
+        await self.final_pass()
+
+    async def _insertionSortRange(self, start, end, draw_every):
+        for i in range(start + 1, end + 1):
+            key = self.vals[i]
+            j = i - 1
+            while j >= start:
+                self.comps += 1
+                if self.comps % draw_every == 0:
+                    self.highlighted = [j, i]
+                    self.drawNums()
+                    await asyncio.sleep(0)
+                if (self.vals[j] > key) if not self.descending else (self.vals[j] < key):
+                    self.vals[j + 1] = self.vals[j]
+                    j -= 1
+                else:
+                    break
+            self.vals[j + 1] = key
+
+    async def timSort(self):
+        self.comps = 0
+        draw_every = max(1, self.numBars // 100)
+        MIN_RUN = 32
+        n = self.numBars
+        for start in range(0, n, MIN_RUN):
+            await self._insertionSortRange(start, min(start + MIN_RUN - 1, n - 1), draw_every)
+        size = MIN_RUN
+        while size < n:
+            for left in range(0, n, 2 * size):
+                mid = min(left + size - 1, n - 1)
+                right = min(left + 2 * size - 1, n - 1)
+                if mid < right:
+                    self.highlighted = list(range(left, right + 1))
+                    self.merge(left, mid, right)
+                    self.drawNums()
+                    await asyncio.sleep(0)
+            size *= 2
+        await self.final_pass()
+
+    async def cocktailSort(self):
+        self.comps = 0
+        draw_every = max(1, self.numBars // 100)
+        lo, hi = 0, self.numBars - 1
+        while lo < hi:
+            swapped = False
+            for i in range(lo, hi):
+                self.comps += 1
+                if (self.vals[i] > self.vals[i + 1]) if not self.descending else (self.vals[i] < self.vals[i + 1]):
+                    swapVals(self.vals, i, i + 1)
+                    swapped = True
+                if self.comps % draw_every == 0:
+                    self.highlighted = [i, i + 1]
+                    self.drawNums()
+                    await asyncio.sleep(0)
+            hi -= 1
+            for i in range(hi, lo, -1):
+                self.comps += 1
+                if (self.vals[i - 1] > self.vals[i]) if not self.descending else (self.vals[i - 1] < self.vals[i]):
+                    swapVals(self.vals, i - 1, i)
+                    swapped = True
+                if self.comps % draw_every == 0:
+                    self.highlighted = [i - 1, i]
+                    self.drawNums()
+                    await asyncio.sleep(0)
+            lo += 1
+            if not swapped:
+                break
+        await self.final_pass()
+
+    async def combSort(self):
+        self.comps = 0
+        draw_every = max(1, self.numBars // 100)
+        n = self.numBars
+        gap = n
+        sorted_ = False
+        while not sorted_:
+            gap = max(1, int(gap / 1.3))
+            sorted_ = gap == 1
+            for i in range(n - gap):
+                self.comps += 1
+                if (self.vals[i] > self.vals[i + gap]) if not self.descending else (self.vals[i] < self.vals[i + gap]):
+                    swapVals(self.vals, i, i + gap)
+                    sorted_ = False
+                if self.comps % draw_every == 0:
+                    self.highlighted = [i, i + gap]
+                    self.drawNums()
+                    await asyncio.sleep(0)
+        await self.final_pass()
+
+    async def gnomeSort(self):
+        self.comps = 0
+        draw_every = max(1, self.numBars // 100)
+        i = 0
+        while i < self.numBars:
+            if i == 0:
+                i += 1
+            self.comps += 1
+            cur = i
+            if (self.vals[i - 1] <= self.vals[i]) if not self.descending else (self.vals[i - 1] >= self.vals[i]):
+                i += 1
+            else:
+                swapVals(self.vals, i - 1, i)
+                i -= 1
+            if self.comps % draw_every == 0:
+                self.highlighted = [cur - 1, cur]
+                self.drawNums()
+                await asyncio.sleep(0)
+        await self.final_pass()
+
+    async def cycleSort(self):
+        self.comps = 0
+        draw_every = max(1, self.numBars // 100)
+        n = self.numBars
+        for cycle_start in range(n - 1):
+            item = self.vals[cycle_start]
+            pos = cycle_start
+            for i in range(cycle_start + 1, n):
+                self.comps += 1
+                if (self.vals[i] < item) if not self.descending else (self.vals[i] > item):
+                    pos += 1
+                if self.comps % draw_every == 0:
+                    self.highlighted = [i, cycle_start]
+                    self.drawNums()
+                    await asyncio.sleep(0)
+            if pos == cycle_start:
+                continue
+            while item == self.vals[pos]:
+                pos += 1
+            self.vals[pos], item = item, self.vals[pos]
+            self.highlighted = [pos, cycle_start]
+            self.drawNums()
+            await asyncio.sleep(0)
+            while pos != cycle_start:
+                pos = cycle_start
+                for i in range(cycle_start + 1, n):
+                    self.comps += 1
+                    if (self.vals[i] < item) if not self.descending else (self.vals[i] > item):
+                        pos += 1
+                    if self.comps % draw_every == 0:
+                        self.highlighted = [i, cycle_start]
+                        self.drawNums()
+                        await asyncio.sleep(0)
+                while item == self.vals[pos]:
+                    pos += 1
+                self.vals[pos], item = item, self.vals[pos]
+                self.highlighted = [pos, cycle_start]
+                self.drawNums()
+                await asyncio.sleep(0)
+        await self.final_pass()
