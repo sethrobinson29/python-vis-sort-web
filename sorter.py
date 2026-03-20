@@ -41,6 +41,7 @@ class Sorter:
         self.sound_enabled = True
         self.volume = 0.5
         self.descending = False
+        self.colors = list(colors)
         self._tone_cache = {}
         self._mixer_ok = False
 
@@ -74,8 +75,8 @@ class Sorter:
         x_step = (self.width - 10) / self.numBars if self.numBars else 1
 
         for i in range(self.numBars):
-            color_idx = (self.vals[i] % 100) // 10 if self.vals[i] > 9 else 0
-            color = colors[color_idx]
+            color_idx = ((self.vals[i] % 100) // 10 if self.vals[i] > 9 else 0) % len(self.colors)
+            color = self.colors[color_idx]
             bar_height = self.vals[i]
             pygame.draw.line(
                 self.surface,

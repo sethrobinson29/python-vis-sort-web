@@ -28,8 +28,15 @@ Styled with a **Windows 95/98 theme** — silver 3D widgets, navy title bar grad
 | **Array size** slider | 100 – 500 elements |
 | **Volume** slider | Tone volume (0 – 100); adjustable while sorting |
 | **M** key | Toggle sound on/off |
+| **Palette** buttons | Switch between Default, Phosphor (green CRT), or Custom color palettes |
 
 Controls are disabled and greyed out while a sort is running (except Stop and Volume).
+
+## Custom Palette
+
+Click **Custom...** to open a Win95-style tabbed dialog with 5 save slots. Each slot lets you build a palette of 1–10 colors using RGB sliders. Changes preview live on the array while the dialog is open. Click **OK** to apply and save, or **Cancel** / **×** to discard.
+
+Palettes are saved to `localStorage` in the browser (expire after 30 days) and to `palettes.json` when running natively.
 
 ## Running locally
 
