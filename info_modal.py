@@ -410,7 +410,7 @@ def _draw_insertion_diagram(surf, rect):
     r = pygame.Rect(rect)
     surf.fill(WIN_GRAY, r)
     n = 7
-    heights = [20, 35, 50, 65, 80, 45, 60]
+    heights = [20, 35, 50, 65, 45, 80, 60]
     LEGEND_H = 18
     font = _font(10)
     baseline = r.bottom - LEGEND_H - 14
@@ -691,7 +691,7 @@ def _draw_cocktail_diagram(surf, rect):
     surf.fill(WIN_GRAY, r)
     n = 7
     heights = [60, 30, 80, 45, 70, 25, 55]
-    ARROW_AREA = 46   # height reserved below bars for two arrows + labels
+    ARROW_AREA = 58   # height reserved below bars for two arrows + labels
     font = _font(10)
     baseline = r.bottom - ARROW_AREA - 8
     bar_area_h = baseline - r.y - 8
@@ -715,13 +715,13 @@ def _draw_cocktail_diagram(surf, rect):
     ax1 = r.x + 10
     ax2 = r.right - 10
     # forward pass arrow + label (first row below baseline)
-    fwd_y = baseline + 14
+    fwd_y = baseline + 22
     pygame.draw.line(surf, WIN_NAVY2, (ax1, fwd_y), (ax2, fwd_y), 2)
     pygame.draw.polygon(surf, WIN_NAVY2, [(ax2, fwd_y), (ax2 - 7, fwd_y - 4), (ax2 - 7, fwd_y + 4)])
     fwd_lbl = font.render("forward pass", False, WIN_NAVY2)
     surf.blit(fwd_lbl, fwd_lbl.get_rect(midleft=(ax1, fwd_y - 9)))
     # backward pass arrow + label (second row)
-    bwd_y = baseline + 36
+    bwd_y = baseline + 44
     pygame.draw.line(surf, WIN_RED, (ax2, bwd_y), (ax1, bwd_y), 2)
     pygame.draw.polygon(surf, WIN_RED, [(ax1, bwd_y), (ax1 + 7, bwd_y - 4), (ax1 + 7, bwd_y + 4)])
     bwd_lbl = font.render("backward pass", False, WIN_RED)
@@ -1068,9 +1068,18 @@ def _build_content_surf(algo_key, font, bold_font, w):
 
 # ── InfoModal class ───────────────────────────────────────────────────────────
 
+# Alphabetical order matching the dropdown
+ALGO_ORDER = [
+    "bubble", "cocktail", "comb", "cycle", "gnome",
+    "heap", "insertion", "merge", "quick", "radix",
+    "selection", "shell", "tim",
+]
+
+
 class InfoModal:
     W       = 640
     TITLE_H = 22
+    _NAV_H  = 36   # prev/next nav bar height
     _BTN_H  = 26
     _BTN_AREA = _BTN_H + 20   # close button row: 10px above + button + 10px below
 
@@ -1084,13 +1093,24 @@ class InfoModal:
         # bold font for section headers
         self._bold_font = _font(comp_font.size("A")[1] - 2, bold=True)
 
+        # largest bold font whose rendered height fits in the nav bar with 6px margin each side
+        _nav_margin = 6
+        _max_text_h = self._NAV_H - 2 * _nav_margin
+        _nav_sz = 8
+        while True:
+            _test = _font(_nav_sz + 1, bold=True)
+            if _test.size("A")[1] > _max_text_h:
+                break
+            _nav_sz += 1
+        self._nav_font = _font(_nav_sz, bold=True)
+
         # compute H: measure content for every algorithm, take the max
         content_w = self.W - 8   # 4px border each side
         max_content_h = 0
         for key in ALGO_INFO:
             s = _build_content_surf(key, self.comp_font, self._bold_font, content_w)
             max_content_h = max(max_content_h, s.get_height())
-        self.H = self.TITLE_H + 6 + max_content_h + self._BTN_AREA
+        self.H = self.TITLE_H + 6 + self._NAV_H + max_content_h + self._BTN_AREA
 
         mx = (WIN_W - self.W) // 2
         my = max(10, (WIN_H - self.H) // 2)
@@ -1120,12 +1140,30 @@ class InfoModal:
             20, 16,
         )
 
-        # content area (below title bar, above close button row)
+        # nav bar rect (below title bar)
+        _nav_y = self.rect.y + 2 + self.TITLE_H + 2
+        self._nav_rect = pygame.Rect(self.rect.x + 4, _nav_y, self.W - 8, self._NAV_H)
+
+        # prev / next buttons inside nav bar
+        _nb_w, _nb_h = 80, 24
+        _nb_cy = _nav_y + self._NAV_H // 2
+        self._prev_btn = pygame.Rect(
+            self._nav_rect.x + 8,
+            _nb_cy - _nb_h // 2,
+            _nb_w, _nb_h,
+        )
+        self._next_btn = pygame.Rect(
+            self._nav_rect.right - 8 - _nb_w,
+            _nb_cy - _nb_h // 2,
+            _nb_w, _nb_h,
+        )
+
+        # content area (below nav bar)
         self._content_rect = pygame.Rect(
             self.rect.x + 4,
-            self.rect.y + 2 + self.TITLE_H + 2,
+            _nav_y + self._NAV_H + 2,
             self.W - 8,
-            self.H - self.TITLE_H - 6 - self._BTN_AREA,
+            max_content_h,
         )
 
         # close button (bottom right, 10px from edges)
@@ -1153,14 +1191,25 @@ class InfoModal:
 
         # title bar
         screen.blit(self._title_grad, (self.rect.x + 2, self.rect.y + 2))
-        algo_name = ALGO_INFO.get(self._algo_key, {}).get("name", self._algo_key or "")
-        title_txt = title_font.render(f"Algorithm Info: {algo_name}", False, WIN_WHITE)
+        title_txt = title_font.render("Algorithm Info", False, WIN_WHITE)
         screen.blit(title_txt, title_txt.get_rect(
             midleft=(self.rect.x + 10, self.rect.y + 2 + self.TITLE_H // 2)
         ))
         draw_raised(screen, self._x_btn)
         xt = self.btn_font.render("X", False, WIN_TEXT)
         screen.blit(xt, xt.get_rect(center=self._x_btn.center))
+
+        # nav bar
+        algo_name = ALGO_INFO.get(self._algo_key, {}).get("name", self._algo_key or "")
+        draw_sunken(screen, self._nav_rect)
+        draw_raised(screen, self._prev_btn)
+        pt = self.btn_font.render("< Prev", False, WIN_TEXT)
+        screen.blit(pt, pt.get_rect(center=self._prev_btn.center))
+        draw_raised(screen, self._next_btn)
+        nt = self.btn_font.render("Next >", False, WIN_TEXT)
+        screen.blit(nt, nt.get_rect(center=self._next_btn.center))
+        nav_lbl = self._nav_font.render(algo_name, False, WIN_TEXT)
+        screen.blit(nav_lbl, nav_lbl.get_rect(center=self._nav_rect.center))
 
         # content area
         if self._content_surf is not None:
@@ -1177,6 +1226,10 @@ class InfoModal:
             pos = event.pos
             if self._x_btn.collidepoint(pos) or self._close_btn.collidepoint(pos):
                 return "close"
+            if self._prev_btn.collidepoint(pos):
+                return "prev"
+            if self._next_btn.collidepoint(pos):
+                return "next"
             if not self.rect.collidepoint(pos):
                 return "close"
         return None

@@ -8,7 +8,7 @@ from sorter import Sorter
 from theme import *
 from theme import _IX, _IY, _font, _make_bg_tile, _make_bg_surf
 from widgets import Button, Slider, Checkbox, Dropdown
-from info_modal import InfoModal
+from info_modal import InfoModal, ALGO_ORDER
 
 try:
     import js as _js
@@ -545,18 +545,18 @@ async def main():
 
     sort_options = [
         ("Bubble",    "bubble"),
-        ("Selection", "selection"),
+        ("Cocktail",  "cocktail"),
+        ("Comb",      "comb"),
+        ("Cycle",     "cycle"),
+        ("Gnome",     "gnome"),
+        ("Heap",      "heap"),
+        ("Insertion", "insertion"),
         ("Merge",     "merge"),
         ("Quick",     "quick"),
         ("Radix",     "radix"),
-        ("Insertion", "insertion"),
-        ("Heap",      "heap"),
+        ("Selection", "selection"),
         ("Shell",     "shell"),
         ("Tim",       "tim"),
-        ("Cocktail",  "cocktail"),
-        ("Comb",      "comb"),
-        ("Gnome",     "gnome"),
-        ("Cycle",     "cycle"),
     ]
     dropdown = Dropdown((COL_B, PANEL_Y + ROW2, DROPDOWN_W, BTN_H), sort_options, btn_font)
     info_btn = Button((COL_B + DROPDOWN_W + 4, PANEL_Y + ROW2, BTN_H, BTN_H), "?", "info", btn_font)
@@ -607,8 +607,19 @@ async def main():
 
             # info modal intercepts all events while open
             if info_modal.is_open:
-                if info_modal.handle_event(event) == "close":
+                _im_result = info_modal.handle_event(event)
+                if _im_result == "close":
                     info_modal.close()
+                elif _im_result in ("prev", "next"):
+                    _cur_idx = ALGO_ORDER.index(info_modal._algo_key)
+                    _delta   = -1 if _im_result == "prev" else 1
+                    _new_key = ALGO_ORDER[(_cur_idx + _delta) % len(ALGO_ORDER)]
+                    dropdown.selected = next(
+                        i for i, (_, k) in enumerate(sort_options) if k == _new_key
+                    )
+                    await cancel_task(task_ref)
+                    sorter.makeNewVals(size_slider.value)
+                    info_modal.open(_new_key)
                 continue
 
             # palette modal intercepts all events while open
