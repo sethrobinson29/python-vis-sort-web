@@ -8,6 +8,7 @@ from sorter import Sorter
 from theme import *
 from theme import _IX, _IY, _font, _make_bg_tile, _make_bg_surf
 from widgets import Button, Slider, Checkbox, Dropdown
+from info_modal import InfoModal
 
 try:
     import js as _js
@@ -394,7 +395,7 @@ async def run_sort(sorter, action, task_ref):
 
 def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
             size_slider, vol_slider, font, comp_font, title_grad, bg_surf,
-            pal_btns, palette_state, modal, sorting=False):
+            pal_btns, palette_state, modal, info_btn, info_modal, sorting=False):
     screen.blit(bg_surf, (0, 0))
 
     # outer window frame — fills interior gray, floats on teal desktop
@@ -473,9 +474,13 @@ def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
     draw_sunken(screen, border)
     screen.blit(sort_surf, (SORT_X, SORT_Y))
     dropdown.draw(screen, disabled=blocked)
+    info_btn.draw(screen, disabled=modal.is_open)
 
     if modal.is_open:
         modal.draw(screen, font)
+
+    if info_modal.is_open:
+        info_modal.draw(screen, font)
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
@@ -515,6 +520,7 @@ async def main():
     sorter._mixer_ok = _mixer_ok
 
     modal = ColorPickerModal(btn_font, comp_font)
+    info_modal = InfoModal(btn_font, comp_font)
 
     # pre-render background and title bar gradient
     bg_surf    = _make_bg_surf(_make_bg_tile())
@@ -553,6 +559,7 @@ async def main():
         ("Cycle",     "cycle"),
     ]
     dropdown = Dropdown((COL_B, PANEL_Y + ROW2, DROPDOWN_W, BTN_H), sort_options, btn_font)
+    info_btn = Button((COL_B + DROPDOWN_W + 4, PANEL_Y + ROW2, BTN_H, BTN_H), "?", "info", btn_font)
 
     size_slider = Slider(
         track_rect=(COL_B, PANEL_Y + TRACK_ROW, ARRAY_SLIDER_W, 14),
@@ -598,7 +605,13 @@ async def main():
                 if event.key == pygame.K_m:
                     sorter.sound_enabled = not sorter.sound_enabled
 
-            # modal intercepts all events while open
+            # info modal intercepts all events while open
+            if info_modal.is_open:
+                if info_modal.handle_event(event) == "close":
+                    info_modal.close()
+                continue
+
+            # palette modal intercepts all events while open
             if modal.is_open:
                 result = modal.handle_event(event)
                 if result == "ok":
@@ -658,6 +671,10 @@ async def main():
                     break
 
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if info_btn.is_clicked(event.pos, disabled=modal.is_open):
+                    info_modal.open(dropdown.selected_action)
+
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 for btn in buttons:
                     if btn.is_clicked(event.pos, disabled=((btn.action == "stop") != sorting)):
                         action = btn.action
@@ -689,7 +706,7 @@ async def main():
 
         draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown, size_slider, vol_slider,
                 title_font, comp_font, title_grad, bg_surf,
-                pal_btns, palette_state, modal, sorting=sorting)
+                pal_btns, palette_state, modal, info_btn, info_modal, sorting=sorting)
         pygame.display.flip()
         await asyncio.sleep(0)
 
