@@ -6,7 +6,7 @@ import time
 import pygame
 from sorter import Sorter
 from theme import *
-from theme import _IX, _IY, _font, _make_bg_tile, _make_bg_surf
+from theme import _IX, _IY, _font, _make_bg_tile, _make_bg_surf, STATUS_H
 from widgets import Button, Slider, Checkbox, Dropdown
 from info_modal import InfoModal, ALGO_ORDER
 
@@ -472,10 +472,6 @@ def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
         "[M] Sound: ON" if sorter.sound_enabled else "[M] Sound: OFF", False, mute_color)
     screen.blit(sound_txt, (COL_C, PANEL_Y + ROW1 + 2))
 
-    # comparisons
-    comp_txt = comp_font.render(f"Comparisons: {sorter.comps}", False, WIN_TEXT)
-    screen.blit(comp_txt, (COL_D, PANEL_Y + ROW1 + 2))
-
     # palette selector — label sits above the inset, inset wraps buttons + swatches
     _HPAD, _VTOP, _VBOT = 6, 6, 8
     _inset_w = 3 * PAL_BTN_W + 2 * PAL_BTN_GAP + _HPAD * 2
@@ -527,6 +523,23 @@ def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
     screen.blit(sort_surf, (SORT_X, SORT_Y))
     dropdown.draw(screen, disabled=blocked)
     info_btn.draw(screen, disabled=modal.is_open)
+
+    # status bar — sunken strip below canvas, full panel width
+    _sx = _IX + 4
+    _sw = WIN_W - 2 * (_IX + 4)
+    _sy = SORT_Y + SORT_H + 6
+    status_rect = pygame.Rect(_sx, _sy, _sw, STATUS_H)
+    draw_sunken(screen, status_rect)
+    algo_name = dropdown.options[dropdown.selected][0]
+    if sorting:
+        status_left = f"Sorting: {algo_name}"
+        status_color = WIN_NAVY
+    else:
+        status_left = "Ready"
+        status_color = WIN_TEXT
+    status_msg = f"  {status_left}    |    Comparisons: {sorter.comps}"
+    st = comp_font.render(status_msg, False, status_color)
+    screen.blit(st, st.get_rect(midleft=(status_rect.x + 4, status_rect.centery)))
 
     if modal.is_open:
         modal.draw(screen, font)

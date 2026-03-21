@@ -30,6 +30,7 @@ PANEL_H = 148           # control panel height (fixed — content-driven)
 PANEL_Y = _IY + TITLE_H + 4   # control panel top  (= 64)
 SORT_X  = 42
 SORT_Y  = PANEL_Y + PANEL_H + 20  # canvas top — extra gap below panel
+STATUS_H = 20                      # status bar height (fits in the ~32px bottom gap)
 
 SLIDER_MIN, SLIDER_MAX, SLIDER_STEP = 100, 500, 5
 
