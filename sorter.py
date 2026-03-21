@@ -295,9 +295,8 @@ class Sorter:
         for end in range(n - 1, 0, -1):
             swapVals(self.vals, 0, end)
             self.highlighted = [0, end]
-            if self.comps % draw_every == 0:
-                self.drawNums()
-                await asyncio.sleep(0)
+            self.drawNums()
+            await asyncio.sleep(0)
             await self._siftDown(0, end - 1, draw_every)
         await self.final_pass()
 
