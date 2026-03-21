@@ -161,7 +161,7 @@ class Dropdown:
         text_rect  = pygame.Rect(self.rect.x, self.rect.y, self.rect.width - arrow_w, self.rect.height)
         arrow_rect = pygame.Rect(self.rect.right - arrow_w, self.rect.y, arrow_w, self.rect.height)
         text_color = WIN_DARK if disabled else WIN_TEXT
-        draw_sunken(surf, text_rect, WIN_WHITE)
+        draw_sunken(surf, self.rect, WIN_WHITE)
         draw_raised(surf, arrow_rect)
         cx, cy = arrow_rect.centerx, arrow_rect.centery
         pygame.draw.polygon(surf, text_color,

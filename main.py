@@ -458,9 +458,13 @@ def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
             pygame.draw.line(screen, WIN_TEXT, (cx - 4, cy - 4), (cx + 4, cy + 4), 2)
             pygame.draw.line(screen, WIN_TEXT, (cx + 4, cy - 4), (cx - 4, cy + 4), 2)
 
-    # control panel (below title bar, inside window frame — sunken like the canvas)
-    panel_rect = pygame.Rect(_IX + 4, PANEL_Y, WIN_W - 2 * (_IX + 4), PANEL_H)
-    draw_sunken(screen, panel_rect)
+    # control panel — four Win95 GroupBoxes on flat gray (no outer sunken border)
+    _gb_h     = PANEL_H - 8                          # height for Actions/Sort/Audio
+    _pal_gb_h = PAL_SWATCH_ROW + SWATCH_H + 10       # palette box hugs its content (= 74px)
+    draw_groupbox(screen, (COL_A - 8, PANEL_Y, BTN_W + 16,                      _gb_h),     "Actions", comp_font)
+    draw_groupbox(screen, (COL_B - 8, PANEL_Y, ARRAY_SLIDER_W + 16,             _gb_h),     "Sort",    comp_font)
+    draw_groupbox(screen, (COL_C - 8, PANEL_Y, VOL_SLIDER_W + 16,               _gb_h),     "Audio",   comp_font)
+    draw_groupbox(screen, (COL_D - 8, PANEL_Y, 3*PAL_BTN_W + 2*PAL_BTN_GAP+16, _pal_gb_h), "Palette", comp_font)
 
     # "Algorithm:" label
     alg_lbl = comp_font.render("Algorithm:", False, WIN_DARK if sorting else WIN_TEXT)
@@ -471,19 +475,6 @@ def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
     sound_txt = comp_font.render(
         "[M] Sound: ON" if sorter.sound_enabled else "[M] Sound: OFF", False, mute_color)
     screen.blit(sound_txt, (COL_C, PANEL_Y + ROW1 + 2))
-
-    # palette selector — label sits above the inset, inset wraps buttons + swatches
-    _HPAD, _VTOP, _VBOT = 6, 6, 8
-    _inset_w = 3 * PAL_BTN_W + 2 * PAL_BTN_GAP + _HPAD * 2
-    pal_inset = pygame.Rect(
-        COL_D - _HPAD,
-        PANEL_Y + PAL_BTN_ROW - _VTOP,
-        _inset_w,
-        PAL_SWATCH_ROW - PAL_BTN_ROW + SWATCH_H + _VTOP + _VBOT,
-    )
-    draw_sunken(screen, pal_inset)
-    pal_lbl = comp_font.render("Palette:", False, WIN_TEXT)
-    screen.blit(pal_lbl, (COL_D, PANEL_Y + PAL_LABEL_ROW))
 
     # palette buttons
     for pb in pal_btns:
@@ -589,11 +580,12 @@ async def main():
         pygame.draw.line(title_grad, c, (i, 0), (i, TITLE_H - 1))
 
     # ── layout ────────────────────────────────────────────────────────────────
-    # Col A — stacked buttons
+    # Col A — stacked buttons (+8 offset so they clear the groupbox border)
+    _A_OFF = 8
     buttons = [
-        Button((COL_A, PANEL_Y + ROW1, BTN_W, BTN_H), "Start",     "sort", btn_font),
-        Button((COL_A, PANEL_Y + ROW2, BTN_W, BTN_H), "Stop",      "stop", btn_font, danger=True),
-        Button((COL_A, PANEL_Y + ROW3, BTN_W, BTN_H), "New Array", "new",  btn_font),
+        Button((COL_A, PANEL_Y + ROW1 + _A_OFF, BTN_W, BTN_H), "Start",     "sort", btn_font),
+        Button((COL_A, PANEL_Y + ROW2 + _A_OFF, BTN_W, BTN_H), "Stop",      "stop", btn_font, danger=True),
+        Button((COL_A, PANEL_Y + ROW3 + _A_OFF, BTN_W, BTN_H), "New Array", "new",  btn_font),
     ]
 
     desc_cb = Checkbox(COL_B, PANEL_Y + ROW1 + (BTN_H - 16) // 2, "Descending", btn_font)

@@ -69,9 +69,9 @@ TRACK_ROW      = 118
 # Layout built bottom-up from PANEL_H=148:
 #   8px below inset → 8px inset bottom pad → swatches(14) → 10px gap →
 #   buttons(20) → 6px inset top pad → 4px gap → label
-PAL_LABEL_ROW  = 64   # "Palette:" label sits outside/above the inset
-PAL_BTN_ROW    = 88   # buttons: top of inset content
-PAL_SWATCH_ROW = 118  # swatches: 10px below button bottom (88+20+10)
+PAL_LABEL_ROW  = 64   # unused (groupbox label replaced it)
+PAL_BTN_ROW    = 20   # buttons near top of groupbox (below label+border ~12px)
+PAL_SWATCH_ROW = 50   # swatches: 10px below button bottom (20+20+10)
 PAL_BTN_W      = 76
 PAL_BTN_H      = 20
 PAL_BTN_GAP    = 4
@@ -122,6 +122,39 @@ def _make_bg_surf(tile):
 
 
 # ── Win95 3D drawing helpers ──────────────────────────────────────────────────
+def draw_groupbox(surf, rect, label, font):
+    """Win95 GroupBox: etched border (gray outer + white inner) with label clipped into top."""
+    r = pygame.Rect(rect)
+    lbl = font.render(label, False, WIN_DARK)   # gray label — subtle on WIN_GRAY bg
+    lbl_h = lbl.get_height()
+    lbl_x = r.x + 8
+    by = r.y + lbl_h // 2   # border top at midpoint of label height
+    gl = lbl_x - 2           # gap left
+    gr = lbl_x + lbl.get_width() + 2  # gap right
+
+    # outer border — WIN_DARK (medium gray, not harsh black)
+    if gl > r.x:
+        pygame.draw.line(surf, WIN_DARK, (r.x, by),       (gl,          by))
+    if gr < r.right:
+        pygame.draw.line(surf, WIN_DARK, (gr, by),        (r.right - 1, by))
+    pygame.draw.line(surf, WIN_DARK, (r.x,       by), (r.x,       r.bottom - 1))
+    pygame.draw.line(surf, WIN_DARK, (r.right-1, by), (r.right-1, r.bottom - 1))
+    pygame.draw.line(surf, WIN_DARK, (r.x, r.bottom-1),  (r.right-1, r.bottom-1))
+
+    # inner border — WIN_LIGHT, 1 px inset (gives the etched-into-gray illusion)
+    by1 = by + 1
+    if gl > r.x + 1:
+        pygame.draw.line(surf, WIN_LIGHT, (r.x+1, by1), (gl,          by1))
+    if gr < r.right - 1:
+        pygame.draw.line(surf, WIN_LIGHT, (gr,    by1), (r.right - 2, by1))
+    pygame.draw.line(surf, WIN_LIGHT, (r.x+1,     by1), (r.x+1,     r.bottom-2))
+    pygame.draw.line(surf, WIN_LIGHT, (r.right-2, by1), (r.right-2, r.bottom-2))
+    pygame.draw.line(surf, WIN_LIGHT, (r.x+1, r.bottom-2), (r.right-2, r.bottom-2))
+
+    surf.blit(lbl, (lbl_x, r.y))
+
+
+
 def draw_raised(surf, rect, color=None):
     r = pygame.Rect(rect)
     surf.fill(WIN_GRAY if color is None else color, r)
