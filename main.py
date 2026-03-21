@@ -6,7 +6,7 @@ import time
 import pygame
 from sorter import Sorter
 from theme import *
-from theme import _IX, _IY, _font, _make_bg_tile, _make_bg_surf, STATUS_H
+from theme import _IX, _IY, _font, _make_bg_tile, _make_bg_surf, STATUS_H, TASKBAR_H
 from widgets import Button, Slider, Checkbox, Dropdown
 from info_modal import InfoModal, ALGO_ORDER
 
@@ -18,6 +18,14 @@ except ImportError:
     _WEB = False
 
 TTL_MS = 30 * 24 * 3600 * 1000   # 1-month localStorage TTL
+
+# Amber terminal gradient for the bar icon (short → tall)
+_ICON_COLORS = [(110, 50, 0), (180, 100, 0), (225, 155, 0), (255, 205, 10)]
+
+
+def _open_url(url):
+    if _WEB:
+        _js.window.open(url, "_blank")
 
 # ── module-level constants ─────────────────────────────────────────────────────
 SORT_OPTIONS = [
@@ -405,6 +413,99 @@ class ColorPickerModal:
         return None
 
 
+# ── StartMenu ─────────────────────────────────────────────────────────────────
+class StartMenu:
+    W         = 200
+    SIDEBAR_W = 24
+    ITEM_H    = 22
+    SEP_H     = 8
+    PAD       = 6
+    ITEMS = [
+        ("sethrobinson29.com",         "https://sethrobinson29.com"),
+        ("github.com/sethrobinson29",  "https://github.com/sethrobinson29"),
+        None,
+        ("About Sorting Visualizer",  "https://github.com/sethrobinson29/python-vis-sort-web"),
+    ]
+
+    def __init__(self):
+        self.is_open = False
+        self.hovered = -1
+        self.start_btn_rect = pygame.Rect(4, WIN_H - TASKBAR_H + 2, 68, TASKBAR_H - 4)
+        n_items = sum(1 for it in self.ITEMS if it is not None)
+        n_seps  = sum(1 for it in self.ITEMS if it is None)
+        h = self.PAD + n_items * self.ITEM_H + n_seps * self.SEP_H + self.PAD
+        self.rect = pygame.Rect(self.start_btn_rect.x, WIN_H - TASKBAR_H - h, self.W, h)
+
+    def _item_iter(self):
+        """Yield (list_index, item_tuple, rect) for each non-separator entry."""
+        y = self.rect.y + self.PAD
+        for i, item in enumerate(self.ITEMS):
+            if item is None:
+                y += self.SEP_H
+            else:
+                yield i, item, pygame.Rect(
+                    self.rect.x + self.SIDEBAR_W, y,
+                    self.W - self.SIDEBAR_W, self.ITEM_H,
+                )
+                y += self.ITEM_H
+
+    def open(self):
+        self.hovered = -1
+        self.is_open = True
+
+    def close(self):
+        self.is_open = False
+
+    def draw(self, screen, font, comp_font):
+        draw_raised(screen, self.rect)
+
+        # left sidebar — navy strip with "vis-sort" rotated vertically
+        sb = pygame.Rect(self.rect.x + 2, self.rect.y + 2,
+                         self.SIDEBAR_W - 2, self.rect.height - 4)
+        screen.fill(WIN_NAVY, sb)
+        sb_rot = pygame.transform.rotate(font.render("vis-sort", False, WIN_WHITE), 90)
+        screen.blit(sb_rot, sb_rot.get_rect(center=sb.center))
+
+        # items and separators
+        y = self.rect.y + self.PAD
+        for i, item in enumerate(self.ITEMS):
+            if item is None:
+                sep_y = y + self.SEP_H // 2
+                pygame.draw.line(screen, WIN_DARK,
+                                 (self.rect.x + self.SIDEBAR_W + 4, sep_y),
+                                 (self.rect.right - 4, sep_y))
+                pygame.draw.line(screen, WIN_LIGHT,
+                                 (self.rect.x + self.SIDEBAR_W + 4, sep_y + 1),
+                                 (self.rect.right - 4, sep_y + 1))
+                y += self.SEP_H
+            else:
+                label, _ = item
+                ir = pygame.Rect(self.rect.x + self.SIDEBAR_W, y,
+                                 self.W - self.SIDEBAR_W, self.ITEM_H)
+                if self.hovered == i:
+                    screen.fill(WIN_NAVY, ir)
+                    t = comp_font.render(label, False, WIN_WHITE)
+                else:
+                    t = comp_font.render(label, False, WIN_TEXT)
+                screen.blit(t, t.get_rect(midleft=(ir.x + 6, ir.centery)))
+                y += self.ITEM_H
+
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEMOTION:
+            self.hovered = -1
+            for i, _, ir in self._item_iter():
+                if ir.collidepoint(event.pos):
+                    self.hovered = i
+                    break
+            return None
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            for i, item, ir in self._item_iter():
+                if ir.collidepoint(event.pos):
+                    return ("url", item[1])
+            return "close"
+        return None
+
+
 # ── helpers ───────────────────────────────────────────────────────────────────
 async def cancel_task(task_ref):
     if task_ref[0] is not None and not task_ref[0].done():
@@ -425,11 +526,43 @@ async def run_sort(sorter, action, task_ref):
 
 def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
             size_slider, vol_slider, font, comp_font, title_grad, bg_surf,
-            pal_btns, palette_state, modal, info_btn, info_modal, sorting=False):
+            pal_btns, palette_state, modal, info_btn, info_modal, sorting=False,
+            start_menu_open=False):
     screen.blit(bg_surf, (0, 0))
 
-    # outer window frame — fills interior gray, floats on teal desktop
-    frame_rect = pygame.Rect(FRAME_X, FRAME_Y, WIN_W - 2 * FRAME_X, WIN_H - 2 * FRAME_Y)
+    # ── taskbar ───────────────────────────────────────────────────────────────
+    tb_y = WIN_H - TASKBAR_H
+    draw_raised(screen, pygame.Rect(0, tb_y, WIN_W, TASKBAR_H))
+
+    # Start button — bold label + 4-color Windows flag icon
+    start_rect = pygame.Rect(4, tb_y + 2, 68, TASKBAR_H - 4)
+    if start_menu_open:
+        draw_sunken(screen, start_rect)
+    else:
+        draw_raised(screen, start_rect)
+    fx, fy = start_rect.x + 4, start_rect.centery - 6
+    for bi, bh in enumerate([4, 6, 9, 11]):
+        pygame.draw.rect(screen, _ICON_COLORS[bi], (fx + bi * 4, fy + 11 - bh, 3, bh))
+    start_lbl = font.render("Start", False, WIN_TEXT)
+    screen.blit(start_lbl, start_lbl.get_rect(midleft=(fx + 18, start_rect.centery)))
+
+    # App button
+    app_rect = pygame.Rect(76, tb_y + 2, 220, TASKBAR_H - 4)
+    draw_raised(screen, app_rect)
+    app_lbl = comp_font.render("Sorting Algorithm Visualizer", False, WIN_TEXT)
+    screen.blit(app_lbl, app_lbl.get_rect(midleft=(app_rect.x + 6, app_rect.centery)))
+
+    # Clock — sunken inset in system tray
+    clock_str = time.strftime("%I:%M %p")
+    clock_surf = comp_font.render(clock_str, False, WIN_TEXT)
+    clock_w = clock_surf.get_width() + 12
+    clock_rect = pygame.Rect(WIN_W - clock_w - 4, tb_y + 2, clock_w, TASKBAR_H - 4)
+    draw_sunken(screen, clock_rect)
+    screen.blit(clock_surf, clock_surf.get_rect(center=clock_rect.center))
+
+    # ── outer window frame — floats on teal desktop above taskbar ─────────────
+    frame_rect = pygame.Rect(FRAME_X, FRAME_Y, WIN_W - 2 * FRAME_X,
+                             WIN_H - FRAME_Y - TASKBAR_H - 4)
     draw_raised(screen, frame_rect)
 
     # title bar gradient (inner top of frame)
@@ -438,7 +571,7 @@ def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
     icon_x, icon_y = _IX + 4, _IY + (TITLE_H - 12) // 2
     for bi, bh in enumerate([4, 7, 10, 12]):
         bx = icon_x + bi * 4
-        pygame.draw.rect(screen, WIN_LIGHT, (bx, icon_y + 12 - bh, 3, bh))
+        pygame.draw.rect(screen, _ICON_COLORS[bi], (bx, icon_y + 12 - bh, 3, bh))
 
     title = font.render("Sorting Algorithm Visualizer", False, WIN_WHITE)
     screen.blit(title, title.get_rect(midleft=(_IX + 24, _IY + TITLE_H // 2)))
@@ -566,7 +699,8 @@ async def main():
     sorter._mixer_ok = _mixer_ok
 
     modal = ColorPickerModal(btn_font, comp_font)
-    info_modal = InfoModal(btn_font, comp_font)
+    info_modal  = InfoModal(btn_font, comp_font)
+    start_menu  = StartMenu()
 
     # pre-render background and title bar gradient
     bg_surf    = _make_bg_surf(_make_bg_tile())
@@ -636,6 +770,22 @@ async def main():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_m:
                     sorter.sound_enabled = not sorter.sound_enabled
+
+            # start menu intercepts all events while open
+            if start_menu.is_open:
+                result = start_menu.handle_event(event)
+                if result == "close":
+                    start_menu.close()
+                elif isinstance(result, tuple) and result[0] == "url":
+                    _open_url(result[1])
+                    start_menu.close()
+                continue
+
+            # start button click (only when menu is closed)
+            if (event.type == pygame.MOUSEBUTTONDOWN and event.button == 1
+                    and start_menu.start_btn_rect.collidepoint(event.pos)):
+                start_menu.open()
+                continue
 
             # info modal intercepts all events while open
             if info_modal.is_open:
@@ -750,7 +900,10 @@ async def main():
 
         draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown, size_slider, vol_slider,
                 title_font, comp_font, title_grad, bg_surf,
-                pal_btns, palette_state, modal, info_btn, info_modal, sorting=sorting)
+                pal_btns, palette_state, modal, info_btn, info_modal, sorting=sorting,
+                start_menu_open=start_menu.is_open)
+        if start_menu.is_open:
+            start_menu.draw(screen, title_font, comp_font)
         pygame.display.flip()
         await asyncio.sleep(0)
 
