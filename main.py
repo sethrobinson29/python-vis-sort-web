@@ -434,15 +434,29 @@ def draw_ui(screen, sorter, sort_surf, buttons, desc_cb, dropdown,
 
     # title bar gradient (inner top of frame)
     screen.blit(title_grad, (_IX, _IY))
+    # app icon — 4-bar sorted-bar graphic
+    icon_x, icon_y = _IX + 4, _IY + (TITLE_H - 12) // 2
+    for bi, bh in enumerate([4, 7, 10, 12]):
+        bx = icon_x + bi * 4
+        pygame.draw.rect(screen, WIN_LIGHT, (bx, icon_y + 12 - bh, 3, bh))
+
     title = font.render("Sorting Algorithm Visualizer", False, WIN_WHITE)
-    screen.blit(title, title.get_rect(midleft=(_IX + 8, _IY + TITLE_H // 2)))
-    btn_y_cap = _IY + 4
+    screen.blit(title, title.get_rect(midleft=(_IX + 24, _IY + TITLE_H // 2)))
+
+    btn_y_cap = _IY + 3
     cap_right = WIN_W - FRAME_X - 2 - 4
-    for i, lbl in enumerate(["-", "O", "X"]):
+    for i in range(3):
         br = pygame.Rect(cap_right - 62 + i * 22, btn_y_cap, 20, 16)
         draw_raised(screen, br)
-        bt = comp_font.render(lbl, False, WIN_TEXT)
-        screen.blit(bt, bt.get_rect(center=br.center))
+        cx, cy = br.centerx, br.centery
+        if i == 0:  # minimize — underline near bottom
+            pygame.draw.line(screen, WIN_TEXT, (cx - 3, br.bottom - 4), (cx + 3, br.bottom - 4), 2)
+        elif i == 1:  # maximize — hollow rectangle
+            pygame.draw.rect(screen, WIN_TEXT, (cx - 4, cy - 4, 9, 9), 1)
+            pygame.draw.line(screen, WIN_TEXT, (cx - 4, cy - 3), (cx + 4, cy - 3))  # double top
+        else:  # close — X
+            pygame.draw.line(screen, WIN_TEXT, (cx - 4, cy - 4), (cx + 4, cy + 4), 2)
+            pygame.draw.line(screen, WIN_TEXT, (cx + 4, cy - 4), (cx - 4, cy + 4), 2)
 
     # control panel (below title bar, inside window frame — sunken like the canvas)
     panel_rect = pygame.Rect(_IX + 4, PANEL_Y, WIN_W - 2 * (_IX + 4), PANEL_H)
