@@ -63,6 +63,11 @@ class Slider:
                 surf.fill(WIN_NAVY, pygame.Rect(self.track.x + 2, self.track.y + 2,
                                                 fill_w - 2, self.track.height - 4))
         draw_raised(surf, self.thumb_rect(), WIN_DARK if disabled else WIN_GRAY)
+        if not disabled:
+            tr = self.thumb_rect()
+            mx = tr.centerx
+            pygame.draw.line(surf, WIN_DARKER, (mx, tr.y + 3),     (mx,     tr.bottom - 4))
+            pygame.draw.line(surf, WIN_LIGHT,  (mx + 1, tr.y + 3), (mx + 1, tr.bottom - 4))
         lbl_text = f"{self.label}: {self.value}"
         lbl_color = WIN_DARK if disabled else WIN_TEXT
         lbl = self.font.render(lbl_text, False, lbl_color)
@@ -156,10 +161,11 @@ class Dropdown:
         text_rect  = pygame.Rect(self.rect.x, self.rect.y, self.rect.width - arrow_w, self.rect.height)
         arrow_rect = pygame.Rect(self.rect.right - arrow_w, self.rect.y, arrow_w, self.rect.height)
         text_color = WIN_DARK if disabled else WIN_TEXT
-        draw_sunken(surf, text_rect, WIN_WHITE)
+        draw_sunken(surf, self.rect, WIN_WHITE)
         draw_raised(surf, arrow_rect)
-        av = self.font.render("v", False, text_color)
-        surf.blit(av, av.get_rect(center=arrow_rect.center))
+        cx, cy = arrow_rect.centerx, arrow_rect.centery
+        pygame.draw.polygon(surf, text_color,
+                            [(cx - 4, cy - 2), (cx + 4, cy - 2), (cx, cy + 3)])
         label = self.options[self.selected][0]
         txt = self.font.render(label, False, text_color)
         surf.blit(txt, txt.get_rect(midleft=(text_rect.x + 4, text_rect.centery)))
